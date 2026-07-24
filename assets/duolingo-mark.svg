@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Duolingo status">
+  <path fill="#58cc02" d="M7.5 28.9C7.5 16.7 14.3 8 24 8s16.5 8.7 16.5 20.9S33.6 41 24 41 7.5 36.1 7.5 28.9Z"/>
+  <path fill="#46a302" d="M11.4 19.4 5 13l2.8-3 7.4 5.3M36.6 19.4 43 13l-2.8-3-7.4 5.3"/>
+  <circle cx="17.5" cy="26.2" r="6.1" fill="#fff"/>
+  <circle cx="30.5" cy="26.2" r="6.1" fill="#fff"/>
+  <circle cx="18.5" cy="27.2" r="2.8" fill="#253a17"/>
+  <circle cx="29.5" cy="27.2" r="2.8" fill="#253a17"/>
+  <path fill="#ff9600" d="M24 29.8c2.2 2.2 3.3 3.6 3.3 4.8a3.3 3.3 0 0 1-6.6 0c0-1.2 1.1-2.6 3.3-4.8Z"/>
+</svg>

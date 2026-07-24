@@ -1,0 +1,11 @@
+{
+  "name": "kai-renner-portfolio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "node --env-file=.env server.js",
+    "dev": "node --env-file=.env server.js"
+  }
+}

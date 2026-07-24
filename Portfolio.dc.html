@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: #ffffff; color: #18181b; font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  a { color: #18181b; text-decoration: none; }
+  a:hover { color: #4b57d1; }
+  ::selection { background: rgba(75,87,209,0.15); color: #18181b; }
+</style>
+</helmet>
+
+<div style="min-height:100vh; background:#ffffff; color:#18181b; font-family:'Inter',system-ui,sans-serif; padding-left:70px;">
+
+  <!-- LEFT RAIL NAV -->
+  <nav style="position:fixed; left:0; top:0; bottom:0; width:70px; z-index:50; background:#ffffff; border-right:1px solid #ededf0; display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:24px 0;">
+    <a href="#top" style="width:30px; height:30px; border-radius:9px; border:1px solid #e4e4e7; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:500; color:#4b57d1;">K</a>
+
+    <div style="display:flex; flex-direction:column; align-items:center; gap:26px;">
+      <a data-nav="work" href="#work" style="writing-mode:vertical-rl; transform:rotate(180deg); font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:#71717a; transition:color .2s ease;">Work</a>
+      <a data-nav="signals" href="#signals" style="writing-mode:vertical-rl; transform:rotate(180deg); font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:#71717a; transition:color .2s ease;">Signals</a>
+      <a data-nav="contact" href="#contact" style="writing-mode:vertical-rl; transform:rotate(180deg); font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:#71717a; transition:color .2s ease;">Contact</a>
+    </div>
+
+    <div style="display:flex; flex-direction:column; align-items:center; gap:11px;">
+      <a href="#" title="GitHub" style="width:28px; height:28px; border-radius:8px; border:1px solid #e4e4e7; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#52525b; transition:border-color .2s ease, color .2s ease;" style-hover="border-color:#4b57d1; color:#4b57d1;">GH</a>
+      <a href="#" title="LinkedIn" style="width:28px; height:28px; border-radius:8px; border:1px solid #e4e4e7; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#52525b; transition:border-color .2s ease, color .2s ease;" style-hover="border-color:#4b57d1; color:#4b57d1;">IN</a>
+      <a href="#" title="X" style="width:28px; height:28px; border-radius:8px; border:1px solid #e4e4e7; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#52525b; transition:border-color .2s ease, color .2s ease;" style-hover="border-color:#4b57d1; color:#4b57d1;">X</a>
+    </div>
+  </nav>
+
+  <main style="max-width:900px; margin:0 auto; padding:0 48px;">
+
+    <!-- HERO -->
+    <section id="top" style="padding:112px 0 52px;">
+      <h1 style="margin:0 0 16px; font-size:clamp(21px,2.3vw,29px); line-height:1.2; letter-spacing:-0.02em; font-weight:600; max-width:470px; text-wrap:pretty;">Kai Renner builds reliable distributed systems and interfaces that feel effortless.</h1>
+      <p style="margin:0 0 40px; font-family:'JetBrains Mono',monospace; font-size:12px; color:#71717a; letter-spacing:0.01em;">Staff Software Engineer · Berlin</p>
+
+      <!-- INSTA-STYLE SOCIAL BAR -->
+      <div style="display:flex; gap:18px;">
+        <a href="#" style="display:flex; flex-direction:column; align-items:center; gap:7px;">
+          <span style="width:40px; height:40px; border-radius:50%; padding:2px; border:1.5px solid #d4d4d8; display:flex; align-items:center; justify-content:center; transition:border-color .2s ease;" style-hover="border-color:#4b57d1;">
+            <span style="width:100%; height:100%; border-radius:50%; background:#f7f7f6; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:11px; color:#18181b;">GH</span>
+          </span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#a1a1aa;">GitHub</span>
+        </a>
+        <a href="#" style="display:flex; flex-direction:column; align-items:center; gap:7px;">
+          <span style="width:40px; height:40px; border-radius:50%; padding:2px; border:1.5px solid #d4d4d8; display:flex; align-items:center; justify-content:center; transition:border-color .2s ease;" style-hover="border-color:#4b57d1;">
+            <span style="width:100%; height:100%; border-radius:50%; background:#f7f7f6; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:11px; color:#18181b;">IN</span>
+          </span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#a1a1aa;">LinkedIn</span>
+        </a>
+        <a href="#" style="display:flex; flex-direction:column; align-items:center; gap:7px;">
+          <span style="width:40px; height:40px; border-radius:50%; padding:2px; border:1.5px solid #d4d4d8; display:flex; align-items:center; justify-content:center; transition:border-color .2s ease;" style-hover="border-color:#4b57d1;">
+            <span style="width:100%; height:100%; border-radius:50%; background:#f7f7f6; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:11px; color:#18181b;">X</span>
+          </span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#a1a1aa;">X</span>
+        </a>
+        <a href="#" style="display:flex; flex-direction:column; align-items:center; gap:7px;">
+          <span style="width:40px; height:40px; border-radius:50%; padding:2px; border:1.5px solid #d4d4d8; display:flex; align-items:center; justify-content:center; transition:border-color .2s ease;" style-hover="border-color:#4b57d1;">
+            <span style="width:100%; height:100%; border-radius:50%; background:#f7f7f6; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:11px; color:#18181b;">IG</span>
+          </span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#a1a1aa;">Instagram</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- SIGNALS / WIDGETS -->
+    <section id="signals" data-reveal style="padding:44px 0 96px; scroll-margin-top:60px; opacity:0; transform:translateY(18px); transition:opacity .7s cubic-bezier(.22,1,.36,1), transform .7s cubic-bezier(.22,1,.36,1);">
+      <p style="margin:0 0 16px; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:#a1a1aa;">Signals</p>
+      <div style="display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; max-width:640px;">
+
+        <!-- GitHub contributions -->
+        <div style="border:1px solid #e4e4e7; border-radius:10px; padding:15px 16px;">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#18181b; margin-bottom:12px;">GitHub</div>
+          <div style="overflow:hidden;">
+            <div id="gh-graph"></div>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#a1a1aa; margin-top:11px;">428 · last 6 months</div>
+        </div>
+
+        <!-- Duolingo streak -->
+        <div style="border:1px solid #e4e4e7; border-radius:10px; padding:15px 16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+            <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#18181b;">Duolingo</span>
+            <span style="width:9px; height:9px; border-radius:2px; background:#f59e0b; transform:rotate(45deg);"></span>
+          </div>
+          <div style="font-size:23px; font-weight:600; letter-spacing:-0.03em; line-height:1;">247</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#a1a1aa; margin-top:7px;">day streak · DE</div>
+          <div style="display:flex; gap:4px; margin-top:13px;">
+            <span style="flex:1; height:4px; border-radius:2px; background:#4b57d1;"></span>
+            <span style="flex:1; height:4px; border-radius:2px; background:#4b57d1;"></span>
+            <span style="flex:1; height:4px; border-radius:2px; background:#4b57d1;"></span>
+            <span style="flex:1; height:4px; border-radius:2px; background:#4b57d1;"></span>
+            <span style="flex:1; height:4px; border-radius:2px; background:#4b57d1;"></span>
+            <span style="flex:1; height:4px; border-radius:2px; background:#c2c7ee;"></span>
+            <span style="flex:1; height:4px; border-radius:2px; background:#f1f1f0;"></span>
+          </div>
+        </div>
+
+        <!-- Local time -->
+        <div style="border:1px solid #e4e4e7; border-radius:10px; padding:15px 16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+            <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#18181b;">Local</span>
+            <span style="width:6px; height:6px; border-radius:50%; background:#22c55e;"></span>
+          </div>
+          <div id="clock" style="font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:500; letter-spacing:-0.02em; line-height:1;">—:—:—</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#a1a1aa; margin-top:7px;">Berlin · CET</div>
+        </div>
+
+      </div>
+    </section>
+
+    <div style="height:1px; background:#ededf0;"></div>
+
+    <!-- WORK — repo index with hover-peek -->
+    <section id="work" data-reveal style="padding:88px 0; scroll-margin-top:60px; opacity:0; transform:translateY(18px); transition:opacity .7s cubic-bezier(.22,1,.36,1), transform .7s cubic-bezier(.22,1,.36,1);">
+      <p style="margin:0 0 20px; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:#a1a1aa;">Work</p>
+      <div id="work-list" style="border-top:1px solid #ededf0;">
+
+        <a class="wrow" href="#" data-name="Meridian" data-shot="scheduler dashboard" style="display:grid; grid-template-columns:28px 1fr auto; align-items:baseline; gap:20px; padding:26px 0; border-bottom:1px solid #ededf0; transition:padding-left .3s cubic-bezier(.22,1,.36,1);" style-hover="padding-left:14px;">
+          <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#a1a1aa;">01</span>
+          <span data-name-el style="font-size:23px; font-weight:600; letter-spacing:-0.02em; color:#18181b; transition:color .2s ease;">Meridian</span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:11.5px; color:#71717a;">Go · gRPC · 2023</span>
+        </a>
+
+        <a class="wrow" href="#" data-name="Halcyon" data-shot="collaborative editor" style="display:grid; grid-template-columns:28px 1fr auto; align-items:baseline; gap:20px; padding:26px 0; border-bottom:1px solid #ededf0; transition:padding-left .3s cubic-bezier(.22,1,.36,1);" style-hover="padding-left:14px;">
+          <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#a1a1aa;">02</span>
+          <span data-name-el style="font-size:23px; font-weight:600; letter-spacing:-0.02em; color:#18181b; transition:color .2s ease;">Halcyon</span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:11.5px; color:#71717a;">TypeScript · CRDT · 2023</span>
+        </a>
+
+        <a class="wrow" href="#" data-name="Ledgerline" data-shot="query explorer" style="display:grid; grid-template-columns:28px 1fr auto; align-items:baseline; gap:20px; padding:26px 0; border-bottom:1px solid #ededf0; transition:padding-left .3s cubic-bezier(.22,1,.36,1);" style-hover="padding-left:14px;">
+          <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#a1a1aa;">03</span>
+          <span data-name-el style="font-size:23px; font-weight:600; letter-spacing:-0.02em; color:#18181b; transition:color .2s ease;">Ledgerline</span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:11.5px; color:#71717a;">Rust · ClickHouse · 2022</span>
+        </a>
+
+      </div>
+
+      <!-- Floating polaroid preview -->
+      <div id="peek" style="position:fixed; left:0; top:0; z-index:60; pointer-events:none; opacity:0; transform:rotate(-3deg); transition:opacity .18s ease; padding:8px 8px 10px; background:#ffffff; border:1px solid #e4e4e7; border-radius:8px; box-shadow:0 12px 32px rgba(24,24,27,0.10); width:240px;">
+        <div style="aspect-ratio:4/3; border-radius:4px; background-image:repeating-linear-gradient(135deg,#f7f7f6 0 12px,#f1f1f0 12px 24px); display:flex; align-items:center; justify-content:center;">
+          <span id="peek-shot" style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#a1a1aa;">screenshot</span>
+        </div>
+        <div id="peek-cap" style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#71717a; margin-top:8px;"></div>
+      </div>
+    </section>
+
+    <div style="height:1px; background:#ededf0;"></div>
+
+    <!-- CONTACT -->
+    <section id="contact" style="padding:88px 0 120px; scroll-margin-top:60px;">
+      <div style="display:flex; flex-wrap:wrap; align-items:baseline; gap:24px;">
+        <a href="mailto:kai@example.com" style="font-size:14px;">kai@example.com</a>
+        <a href="#" style="font-size:14px; color:#71717a; transition:color .2s ease;">GitHub</a>
+        <a href="#" style="font-size:14px; color:#71717a; transition:color .2s ease;">LinkedIn</a>
+        <a href="#" style="font-size:14px; color:#71717a; transition:color .2s ease;">X</a>
+      </div>
+    </section>
+
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  componentDidMount() {
+    // GitHub contribution heatmap (compact — last ~6 months)
+    const g = document.getElementById('gh-graph');
+    if (g && !g.childElementCount) {
+      const levels = ['#f1f1f0', '#dfe1f5', '#c2c7ee', '#8f99e0', '#4b57d1'];
+      const weeks = 26, days = 7;
+      let seed = 20260723;
+      const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+      g.style.display = 'grid';
+      g.style.gridTemplateRows = 'repeat(' + days + ', 1fr)';
+      g.style.gridAutoFlow = 'column';
+      g.style.gridAutoColumns = '1fr';
+      g.style.gap = '2px';
+      g.style.aspectRatio = weeks + '/' + days;
+      for (let i = 0; i < weeks * days; i++) {
+        const r = rnd();
+        const lvl = r > 0.84 ? 4 : r > 0.68 ? 3 : r > 0.48 ? 2 : r > 0.26 ? 1 : 0;
+        const c = document.createElement('div');
+        c.style.borderRadius = '1.5px';
+        c.style.background = levels[lvl];
+        g.appendChild(c);
+      }
+    }
+
+    // Live Berlin clock
+    const clock = document.getElementById('clock');
+    const tick = () => {
+      if (!clock) return;
+      clock.textContent = new Date().toLocaleTimeString('en-GB', { timeZone: 'Europe/Berlin', hour12: false });
+    };
+    tick();
+    this._clock = setInterval(tick, 1000);
+
+    // Work hover-peek preview
+    const list = document.getElementById('work-list');
+    const peek = document.getElementById('peek');
+    const shot = document.getElementById('peek-shot');
+    const cap = document.getElementById('peek-cap');
+    if (list && peek) {
+      list.querySelectorAll('.wrow').forEach((r) => {
+        const nameEl = r.querySelector('[data-name-el]');
+        r.addEventListener('mouseenter', () => {
+          if (shot) shot.textContent = 'screenshot — ' + r.getAttribute('data-shot');
+          if (cap) cap.textContent = r.getAttribute('data-name');
+          peek.style.opacity = '1';
+          if (nameEl) nameEl.style.color = '#4b57d1';
+        });
+        r.addEventListener('mouseleave', () => {
+          peek.style.opacity = '0';
+          if (nameEl) nameEl.style.color = '#18181b';
+        });
+      });
+      list.addEventListener('mousemove', (e) => {
+        let x = e.clientX + 28, y = e.clientY - 40;
+        if (x + 248 > window.innerWidth) x = e.clientX - 268;
+        peek.style.left = x + 'px';
+        peek.style.top = Math.max(12, y) + 'px';
+      });
+    }
+
+    // Reveal-on-scroll
+    const reveal = document.querySelectorAll('[data-reveal]');
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.style.opacity = '1';
+            e.target.style.transform = 'translateY(0)';
+            io.unobserve(e.target);
+          }
+        });
+      }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+      reveal.forEach((el) => io.observe(el));
+    } else {
+      reveal.forEach((el) => { el.style.opacity = '1'; el.style.transform = 'none'; });
+    }
+    this._t = setTimeout(() => {
+      reveal.forEach((el) => { el.style.opacity = '1'; el.style.transform = 'translateY(0)'; });
+    }, 1600);
+
+    // Active nav highlighting
+    const links = Array.from(document.querySelectorAll('[data-nav]'));
+    const map = {};
+    links.forEach((l) => { map[l.getAttribute('data-nav')] = l; });
+    const sections = links.map((l) => document.querySelector('#' + l.getAttribute('data-nav'))).filter(Boolean);
+    const setActive = (id) => {
+      links.forEach((l) => { l.style.color = '#71717a'; });
+      if (map[id]) map[id].style.color = '#18181b';
+    };
+    if ('IntersectionObserver' in window && sections.length) {
+      const navIo = new IntersectionObserver((entries) => {
+        entries.forEach((e) => { if (e.isIntersecting) setActive(e.target.id); });
+      }, { rootMargin: '-45% 0px -50% 0px', threshold: 0 });
+      sections.forEach((s) => navIo.observe(s));
+    }
+  }
+  componentWillUnmount() {
+    if (this._t) clearTimeout(this._t);
+    if (this._clock) clearInterval(this._clock);
+  }
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
