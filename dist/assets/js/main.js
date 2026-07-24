@@ -1,5 +1,3 @@
-import { mountFluidDuck } from './fluid-duck.js';
-
 const $ = (selector, parent = document) => parent.querySelector(selector);
 const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
 
@@ -207,4 +205,4 @@ function setupCursorLens() {
   requestAnimationFrame(draw);
 }
 
-loadGitHubContributions(); startClock(); loadDuolingoStatus(); setInterval(loadDuolingoStatus, 5 * 60 * 1000); setupDuolingoNudge(); setupRevealAndNav(); setupPhotoGallery(); setupRoleSwitcher(); setupCursorLens(); mountFluidDuck($('#hero-fluid'));
+loadGitHubContributions(); startClock(); loadDuolingoStatus(); setInterval(loadDuolingoStatus, 5 * 60 * 1000); setupDuolingoNudge(); setupRevealAndNav(); setupPhotoGallery(); setupRoleSwitcher(); setupCursorLens();
