@@ -1,3 +1,5 @@
+import { mountAmbientTree } from './ambient-tree.js';
+
 const $ = (selector, parent = document) => parent.querySelector(selector);
 const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
 
@@ -205,4 +207,4 @@ function setupCursorLens() {
   requestAnimationFrame(draw);
 }
 
-loadGitHubContributions(); startClock(); loadDuolingoStatus(); setInterval(loadDuolingoStatus, 5 * 60 * 1000); setupDuolingoNudge(); setupRevealAndNav(); setupPhotoGallery(); setupRoleSwitcher(); setupCursorLens();
+loadGitHubContributions(); startClock(); loadDuolingoStatus(); setInterval(loadDuolingoStatus, 5 * 60 * 1000); setupDuolingoNudge(); setupRevealAndNav(); setupPhotoGallery(); setupRoleSwitcher(); setupCursorLens(); mountAmbientTree($('#ambient-tree'));
