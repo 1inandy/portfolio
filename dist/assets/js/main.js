@@ -271,6 +271,96 @@ function setupPhotoGallery() {
   updateButton();
 }
 
+// Keep the Work area a composed three-row moment even as more projects are added.
+// Add projects as normal `.project` articles in the HTML; this enhancement pages them
+// in groups of three while the no-JavaScript version remains a fully readable list.
+function setupProjectCarousel() {
+  const list = $('.project-list');
+  if (!list) return;
+
+  const projects = $$('.project', list);
+  const projectsPerPage = 3;
+  if (projects.length <= projectsPerPage) return;
+
+  const viewport = document.createElement('div');
+  const track = document.createElement('div');
+  const controls = document.createElement('div');
+  const pages = [];
+  let page;
+
+  list.classList.add('is-carousel');
+  viewport.className = 'project-carousel-viewport';
+  viewport.id = 'project-carousel';
+  track.className = 'project-carousel-track';
+  controls.className = 'project-controls';
+
+  projects.forEach((project, index) => {
+    if (index % projectsPerPage === 0) {
+      page = document.createElement('div');
+      page.className = 'project-page';
+      page.setAttribute('role', 'group');
+      pages.push(page);
+      track.append(page);
+    }
+    page.append(project);
+  });
+
+  viewport.append(track);
+  controls.innerHTML = `
+    <span class="project-page-count" aria-live="polite"></span>
+    <button class="project-control" type="button" data-project-previous aria-label="Show previous projects">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 3.25 5.75 8l4.75 4.75M6 8h7"/></svg>
+    </button>
+    <button class="project-control" type="button" data-project-next aria-label="Show next projects">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m5.5 3.25L10.25 8 5.5 12.75M10 8H3"/></svg>
+    </button>`;
+  list.replaceChildren(viewport, controls);
+
+  const count = $('.project-page-count', controls);
+  const previous = $('[data-project-previous]', controls);
+  const next = $('[data-project-next]', controls);
+  let current = 0;
+
+  const goTo = (pageIndex) => {
+    current = (pageIndex + pages.length) % pages.length;
+    track.style.transform = `translate3d(${-current * 100}%, 0, 0)`;
+
+    pages.forEach((item, index) => {
+      const isCurrent = index === current;
+      item.setAttribute('aria-hidden', String(!isCurrent));
+      item.toggleAttribute('inert', !isCurrent);
+      if (isCurrent) $$('.project[data-reveal]', item).forEach((project) => project.classList.add('is-revealed'));
+    });
+
+    const first = current * projectsPerPage + 1;
+    const last = Math.min(first + projectsPerPage - 1, projects.length);
+    count.textContent = `${String(first).padStart(2, '0')}–${String(last).padStart(2, '0')} / ${String(projects.length).padStart(2, '0')}`;
+    count.setAttribute('aria-label', `Showing projects ${first} through ${last} of ${projects.length}`);
+  };
+
+  previous.addEventListener('click', () => goTo(current - 1));
+  next.addEventListener('click', () => goTo(current + 1));
+  list.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowLeft') { event.preventDefault(); goTo(current - 1); }
+    if (event.key === 'ArrowRight') { event.preventDefault(); goTo(current + 1); }
+  });
+
+  let touchStart = null;
+  viewport.addEventListener('pointerdown', (event) => {
+    if (event.pointerType === 'touch') touchStart = event.clientX;
+  }, { passive:true });
+  viewport.addEventListener('pointerup', (event) => {
+    if (touchStart === null) return;
+    const distance = event.clientX - touchStart;
+    touchStart = null;
+    if (Math.abs(distance) < 42) return;
+    goTo(current + (distance < 0 ? 1 : -1));
+  }, { passive:true });
+  viewport.addEventListener('pointercancel', () => { touchStart = null; }, { passive:true });
+
+  goTo(0);
+}
+
 function setupCursorLens() {
   const ring = $('.cursor-ring');
   const dot = $('.cursor-dot');
@@ -547,4 +637,4 @@ function setupCursorLens() {
   requestAnimationFrame(frame);
 }
 
-loadGitHubContributions(); startClock(); loadDuolingoStatus(); setInterval(loadDuolingoStatus, 5 * 60 * 1000); setupDuolingoNudge(); setupHeadlineReveal(); setupRevealAndNav(); setupParallax(); setupPhotoGallery(); setupRoleSwitcher(); setupCursorLens();
+loadGitHubContributions(); startClock(); loadDuolingoStatus(); setInterval(loadDuolingoStatus, 5 * 60 * 1000); setupDuolingoNudge(); setupHeadlineReveal(); setupProjectCarousel(); setupRevealAndNav(); setupParallax(); setupPhotoGallery(); setupRoleSwitcher(); setupCursorLens();
