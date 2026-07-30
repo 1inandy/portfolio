@@ -275,19 +275,32 @@ function setupCursorLens() {
   const ring = $('.cursor-ring');
   const dot = $('.cursor-dot');
   const caption = $('.cursor-label');
-  if (!ring || !dot || !caption) return;
+  const click = $('.cursor-click');
+  if (!ring || !dot || !caption || !click) return;
   if (matchMedia('(prefers-reduced-motion: reduce), (pointer: coarse)').matches) return;
 
-  // [selector, ring scale, caption, tone] — first match wins, so specific rules sit above `a, button`.
+  // [selector, ring scale, caption, tone, sticks] — first match wins, so specific rules
+  // sit above `a, button`. Any element can override with data-cursor="stick|invert|link|
+  // media|off" and data-cursor-text="…", so behaviour can move around without editing this.
   const RULES = [
-    ['.photo, .project-media', 2.3, 'view', 'is-media'],
-    ['.project-name', 1.7, 'open', 'is-link'],
-    ['.signal', 1.7, 'visit', 'is-link'],
-    ['.gallery-toggle', 1.55, 'more', 'is-link'],
-    ['.duolingo-nudge', 1.55, 'nudge', 'is-link'],
-    ['a, button', 1.45, '', 'is-link']
+    ['.photo', 3, '', 'is-invert', false],
+    ['.project-media', 2.3, 'view', 'is-media', false],
+    ['.project-name', 2.7, '', 'is-invert', 'rail'],
+    ['.award-copy h2', 2.4, '', 'is-invert', 'rail'],
+    ['.gallery-toggle', 2.1, '', 'is-invert', true],
+    ['.meta-email', 2.1, '', 'is-invert', true],
+    ['.signal', 1.7, 'visit', 'is-link', false],
+    ['.duolingo-nudge', 1.75, '', 'is-click', false],
+    ['a, button', 1.45, '', 'is-link', false]
   ];
-  const MAGNETIC = '.social-link, .profile-link, .project-name, .project-repo, .gallery-toggle, .duolingo-nudge';
+  const MAGNETIC = '.social-link, .profile-link, .project-repo, .duolingo-nudge';
+  const TONES = ['is-link', 'is-media', 'is-invert', 'is-click'];
+  // how far the stuck cursor is allowed to drift off the element's centre toward the pointer
+  const STICK_PULL = .11;
+  // Tidal lean on a stuck element: TIDE_REACH is the furthest it will ever travel, and
+  // TIDE_SOFTEN widens the falloff so small targets are not maxed out by a tiny movement.
+  const TIDE_REACH = 7;
+  const TIDE_SOFTEN = 30;
 
   const TAU = Math.PI * 2;
   const STEP = 1 / 120;
@@ -297,6 +310,32 @@ function setupCursorLens() {
   const advance = (state, target, stiffness, damping) => {
     state.v += ((target - state.x) * stiffness - state.v * damping) * STEP;
     state.x += state.v * STEP;
+  };
+  // ease-out falloff in [-1,1] — responsive near the centre, flattening at the edges so
+  // the pull reads as a force that runs out of strength, not a leash
+  const tide = (ratio) => { const t = clamp(ratio, -1, 1); return Math.sign(t) * (1 - (1 - Math.abs(t)) ** 2); };
+
+  // A block element's box can be far wider than the words inside it — an award heading
+  // fills its whole grid column — so sticking to the box centre misses the text entirely.
+  // Measure the glyphs instead, keeping only the line the pointer is actually on.
+  const measure = document.createRange();
+  const textRect = (element, at) => {
+    measure.selectNodeContents(element);
+    const pieces = [...measure.getClientRects()].filter((piece) => piece.width && piece.height);
+    if (!pieces.length) return element.getBoundingClientRect();
+    let line = pieces[0], nearest = Infinity;
+    for (const piece of pieces) {
+      const gap = Math.abs(at.y - (piece.top + piece.height / 2));
+      if (gap < nearest) { nearest = gap; line = piece; }
+    }
+    // union every fragment sharing that line, so a trailing arrow or icon still counts
+    let left = line.left, right = line.right, top = line.top, bottom = line.bottom;
+    for (const piece of pieces) {
+      if (piece.bottom <= line.top || piece.top >= line.bottom) continue;
+      left = Math.min(left, piece.left); right = Math.max(right, piece.right);
+      top = Math.min(top, piece.top); bottom = Math.max(bottom, piece.bottom);
+    }
+    return { left, top, width:right - left, height:bottom - top };
   };
   const shortestTurn = (from, to) => {
     let delta = (to - from) % TAU;
@@ -309,34 +348,54 @@ function setupCursorLens() {
   const ringX = spring(pointer.x), ringY = spring(pointer.y);
   const dotX = spring(pointer.x), dotY = spring(pointer.y);
   const scale = spring(1), stretch = spring(0), press = spring(0);
-  const shell = spring(0), dotShell = spring(1), captionFade = spring(0);
+  const shell = spring(0), dotShell = spring(1), captionFade = spring(0), clickFade = spring(0);
   const pullX = spring(0), pullY = spring(0);
 
   let angle = 0;
   let hovered = null, lastTarget = null;
-  let magnetWanted = null, magnetNode = null;
-  let targetScale = 1, held = 0, awake = 0, engaged = false;
+  let magnetWanted = null, magnetNode = null, stickNode = null, stickMotion = '';
+  let targetScale = 1, held = 0, awake = 0, engaged = false, hideDot = false, clickWanted = false;
   let captionText = '', pendingCaption = '';
   let last = performance.now(), carry = 0;
+
+  const MODE_TONES = { stick:'is-invert', invert:'is-invert', media:'is-media', link:'is-link', click:'is-click' };
 
   const resolve = (target) => {
     if (target === lastTarget) return;
     lastTarget = target;
+
+    // nearest [data-cursor] wins over a selector rule only when it is the deeper element
     let hit = null, rule = null;
     if (target && target.closest) {
       for (const candidate of RULES) {
-        hit = target.closest(candidate[0]);
-        if (hit) { rule = candidate; break; }
+        const match = target.closest(candidate[0]);
+        if (match) { hit = match; rule = candidate; break; }
       }
+      const tagged = target.closest('[data-cursor]');
+      if (tagged && (!hit || hit.contains(tagged))) { hit = tagged; rule = null; }
     }
     if (hit === hovered) return;
     hovered = hit;
-    targetScale = rule ? rule[1] : 1;
-    pendingCaption = rule ? rule[2] : '';
-    ring.classList.toggle('is-link', rule ? rule[3] === 'is-link' : false);
-    ring.classList.toggle('is-media', rule ? rule[3] === 'is-media' : false);
-    dot.classList.toggle('is-inverted', Boolean(rule));
-    magnetWanted = hit ? hit.closest(MAGNETIC) : null;
+
+    const mode = hit ? hit.dataset.cursor || '' : '';
+    const ruleMotion = !mode && rule ? rule[4] : '';
+    const sticks = Boolean(hit) && mode !== 'off' && (mode === 'stick' || Boolean(ruleMotion));
+    const tone = !hit || mode === 'off' ? '' : MODE_TONES[mode] || (rule ? rule[3] : 'is-link');
+
+    // a bare data-cursor with no matching rule still needs a sensible size for its tone
+    const fallbackScale = tone === 'is-invert' ? 2.4 : tone === 'is-media' ? 2.3 : 1.45;
+    targetScale = !hit || mode === 'off' ? 1 : Number(hit.dataset.cursorScale) || (rule ? rule[1] : fallbackScale);
+    pendingCaption = !hit || mode === 'off' ? '' : hit.dataset.cursorText ?? (rule ? rule[2] : '');
+    stickNode = sticks ? hit : null;
+    stickMotion = sticks ? (mode === 'stick' ? 'stick' : ruleMotion) : '';
+    // The dot marks the true pointer. It earns its place when the ring has left the pointer
+    // (stick), but inside a big disc already centred on the pointer it is just grit.
+    hideDot = Boolean((tone === 'is-invert' || tone === 'is-click') && !sticks);
+    clickWanted = tone === 'is-click';
+    // a stuck element is its own magnet, so the disc parks while the element leans
+    magnetWanted = !hit ? null : sticks ? hit : hit.closest(MAGNETIC);
+    TONES.forEach((name) => ring.classList.toggle(name, name === tone));
+    dot.classList.toggle('is-inverted', Boolean(tone) && tone !== 'is-invert');
   };
 
   const frame = (now) => {
@@ -352,38 +411,82 @@ function setupCursorLens() {
     if (!magnetNode && magnetWanted) magnetNode = magnetWanted;
 
     // All layout reads happen here, before this frame writes anything.
+    const stickBox = stickNode ? textRect(stickNode, pointer) : null;
     let wantX = 0, wantY = 0;
     if (magnetNode && magnetNode === magnetWanted) {
-      const box = magnetNode.getBoundingClientRect();
-      wantX = clamp((pointer.x - (box.left + box.width / 2 - pullX.x)) * .22, -7, 7);
-      wantY = clamp((pointer.y - (box.top + box.height / 2 - pullY.x)) * .22, -7, 7);
+      const box = magnetNode === stickNode ? stickBox : magnetNode.getBoundingClientRect();
+      // subtract the offset already applied, or the element chases its own tail
+      const restX = box.left + box.width / 2 - pullX.x;
+      const restY = box.top + box.height / 2 - pullY.x;
+      if (magnetNode === stickNode && stickMotion !== 'rail') {
+        // Tide: leans toward the pointer in proportion to how far off centre it is,
+        // saturating well before it could ever reach it. Anchored, never attached.
+        wantX = tide((pointer.x - restX) / (box.width / 2 + TIDE_SOFTEN)) * TIDE_REACH;
+        wantY = tide((pointer.y - restY) / (box.height / 2 + TIDE_SOFTEN)) * TIDE_REACH;
+      } else {
+        wantX = clamp((pointer.x - restX) * .22, -7, 7);
+        wantY = clamp((pointer.y - restY) * .22, -7, 7);
+      }
     }
+    // Stick: the ring abandons the pointer and parks on the element's centre, drifting
+    // only a fraction of the way back toward where the pointer actually is.
+    let aimX = pointer.x, aimY = pointer.y;
+    if (stickBox) {
+      const midX = stickBox.left + stickBox.width / 2;
+      const midY = stickBox.top + stickBox.height / 2;
+      if (stickMotion === 'rail') {
+        // Titles and awards become a horizontal rail: the disc glides over the glyphs
+        // but stays vertically seated on their optical centre.
+        aimX = pointer.x;
+        aimY = midY + (pointer.y - midY) * .025;
+      } else {
+        aimX = midX + (pointer.x - midX) * STICK_PULL;
+        aimY = midY + (pointer.y - midY) * STICK_PULL;
+      }
+    }
+
     const captionTarget = captionText && captionText === pendingCaption ? 1 : 0;
-    const dotTarget = pendingCaption ? 0 : 1; // the caption owns the centre when there is one
+    const dotTarget = pendingCaption || hideDot ? 0 : 1; // the caption owns the centre when there is one
+
+    // A parked disc wants a slower, heavier settle than a cursor chasing the pointer:
+    // 2.6Hz and slightly overdamped, so it glides in and holds instead of twitching.
+    const followK = stickNode ? 260 : 520;
+    const followD = stickNode ? 34 : 42;
+    const followKX = stickMotion === 'rail' ? 920 : followK;
+    const followDX = stickMotion === 'rail' ? 68 : followD;
+    const followKY = stickMotion === 'rail' ? 340 : followK;
+    const followDY = stickMotion === 'rail' ? 38 : followD;
+    const sizeK = stickNode ? 520 : 760;
+    const sizeD = stickNode ? 44 : 40;
+    // heavy and just under critical, so it lags into place and settles back with one soft rebound
+    const pullK = magnetNode === stickNode ? 300 : 600;
+    const pullD = magnetNode === stickNode ? 30 : 44;
 
     while (carry >= STEP) {
       carry -= STEP;
-      advance(ringX, pointer.x, 520, 42);   // 3.6Hz, damping .92 — a breath of lag, no overshoot wobble
-      advance(ringY, pointer.y, 520, 42);
+      advance(ringX, aimX, followKX, followDX);
+      advance(ringY, aimY, followKY, followDY);
       advance(dotX, pointer.x, 2400, 98);   // critically damped, near 1:1
       advance(dotY, pointer.y, 2400, 98);
-      advance(scale, targetScale, 760, 40); // damping .72 — the state change gets a soft bounce
+      advance(scale, targetScale, sizeK, sizeD); // damping .72 — the state change gets a soft bounce
       advance(press, held, 1400, 64);
       advance(shell, awake, 900, 60);
       advance(dotShell, dotTarget, 900, 60);
       advance(captionFade, captionTarget, 900, 60);
-      advance(pullX, wantX, 600, 44);
-      advance(pullY, wantY, 600, 44);
+      advance(clickFade, clickWanted ? 1 : 0, 900, 60);
+      advance(pullX, wantX, pullK, pullD);
+      advance(pullY, wantY, pullK, pullD);
       // Squash reads the ring's own velocity, so it is immune to mouse polling rate.
       const speed = Math.hypot(ringX.v, ringY.v);
-      advance(stretch, clamp(speed / 5200, 0, .26), 900, 60);
+      // a stuck disc barely moves; damp what squash is left so it does not shimmer
+      advance(stretch, clamp(speed / 5200, 0, .26) * (stickNode ? .3 : 1), 900, 60);
       if (speed > 60) angle += shortestTurn(angle, Math.atan2(ringY.v, ringX.v)) * .12;
     }
 
     const settling = Math.abs(ringX.v) + Math.abs(ringY.v) + Math.abs(dotX.v) + Math.abs(dotY.v) > .5
       || Math.abs(scale.x - targetScale) > .0005 || Math.abs(press.x - held) > .0005
       || Math.abs(shell.x - awake) > .0005 || Math.abs(dotShell.x - dotTarget) > .0005
-      || Math.abs(captionFade.x - captionTarget) > .0005 || Math.abs(stretch.x) > .0005
+      || Math.abs(captionFade.x - captionTarget) > .0005 || Math.abs(clickFade.x - (clickWanted ? 1 : 0)) > .0005 || Math.abs(stretch.x) > .0005
       || Math.abs(pullX.x - wantX) > .01 || Math.abs(pullY.x - wantY) > .01;
 
     if (settling) {
@@ -400,6 +503,8 @@ function setupCursorLens() {
       dot.style.opacity = (shell.x * dotShell.x).toFixed(3);
       caption.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
       caption.style.opacity = (shell.x * captionFade.x).toFixed(3);
+      click.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) scale(${(1 - press.x * .1).toFixed(3)})`;
+      click.style.opacity = (shell.x * clickFade.x).toFixed(3);
       if (magnetNode) magnetNode.style.translate = `${pullX.x.toFixed(2)}px ${pullY.x.toFixed(2)}px`;
     }
     requestAnimationFrame(frame);
@@ -423,9 +528,13 @@ function setupCursorLens() {
     lastTarget = null;
     hovered = null;
     magnetWanted = null;
+    stickNode = null;
+    stickMotion = '';
     targetScale = 1;
     pendingCaption = '';
-    ring.classList.remove('is-link', 'is-media');
+    hideDot = false;
+    clickWanted = false;
+    ring.classList.remove(...TONES);
     dot.classList.remove('is-inverted');
   };
 
