@@ -106,10 +106,13 @@ h1.is-split .name::after { animation-delay:.95s; }
 /* One architectural rule; the dot is the only thing on it that ever moves. */
 .exhibit-list { position:relative; min-width:0; padding-left:26px; }
 .exhibit-rule { position:absolute; top:6px; bottom:6px; left:0; width:1px; background:var(--line); }
-.exhibit-dot { position:absolute; top:0; left:0; width:7px; height:7px; margin-left:-3px; border-radius:50%; background:var(--ink); transform:translate3d(0,calc(var(--i,0) * var(--row) + var(--row) / 2 - 6px - 50%),0); transition:transform var(--d) var(--e); }
+.exhibit-dot { position:absolute; top:0; left:0; width:7px; height:7px; margin-left:-3px; border-radius:50%; background:var(--ink); transform:translate3d(0,calc(var(--i,0) * var(--row) + var(--row) / 2 - 6px - 50%),0); transition:transform var(--d) var(--e),opacity 160ms ease; }
 
-.exhibit-items { display:flex; flex-direction:column; }
-.exhibit-item { display:grid; grid-template-columns:32px minmax(0,1fr); align-items:center; height:var(--row); padding:0; border:0; background:none; color:inherit; cursor:pointer; text-align:left; font:inherit; }
+.exhibit-items { display:flex; max-height:calc(var(--row) * 5); padding-right:10px; overflow-y:auto; flex-direction:column; scroll-snap-type:y proximity; scrollbar-color:#d4d4d8 transparent; scrollbar-width:thin; }
+.exhibit-items::-webkit-scrollbar { width:4px; }
+.exhibit-items::-webkit-scrollbar-track { background:transparent; }
+.exhibit-items::-webkit-scrollbar-thumb { border-radius:2px; background:#d4d4d8; }
+.exhibit-item { display:grid; flex:0 0 var(--row); grid-template-columns:32px minmax(0,1fr); align-items:center; height:var(--row); padding:0; border:0; background:none; color:inherit; cursor:pointer; scroll-snap-align:start; text-align:left; font:inherit; }
 .exhibit-item:focus-visible { outline:none; }
 .exhibit-item:focus-visible .item-title { outline:2px solid var(--accent); outline-offset:4px; }
 .item-number { font:10.5px 'JetBrains Mono',monospace; color:#a1a1aa; letter-spacing:.06em; transition:color var(--td,var(--d)) var(--e); }

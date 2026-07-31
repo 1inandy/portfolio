@@ -318,6 +318,7 @@ function setupExhibit() {
   if (!exhibit) return;
   const plate = $('.exhibit-plate', exhibit);
   const list = $('.exhibit-items', exhibit);
+  const marker = $('.exhibit-dot', exhibit);
   const tabs = $$('.exhibit-item', exhibit);
   const panels = $$('.detail', exhibit);
   const images = $$('.plate-image', exhibit);
@@ -327,6 +328,25 @@ function setupExhibit() {
   const clamp = (value, min, max) => (value < min ? min : value > max ? max : value);
 
   let active = 0;
+
+  // The index is a five-row viewport. The marker stays geometrically tied to
+  // its active row as that viewport scrolls, then disappears when its row is
+  // outside the visible slice instead of drifting into the empty space below.
+  const syncListMarker = () => {
+    if (!marker) return;
+    marker.style.translate = `0 ${-list.scrollTop}px`;
+    const tab = tabs[active];
+    const top = tab.offsetTop - list.scrollTop;
+    marker.style.opacity = top + tab.offsetHeight > 0 && top < list.clientHeight ? '' : '0';
+  };
+  list.addEventListener('scroll', syncListMarker, { passive:true });
+
+  const revealTab = (tab) => {
+    const top = tab.offsetTop;
+    const bottom = top + tab.offsetHeight;
+    if (top < list.scrollTop) list.scrollTo({ top, behavior:'smooth' });
+    else if (bottom > list.scrollTop + list.clientHeight) list.scrollTo({ top:bottom - list.clientHeight, behavior:'smooth' });
+  };
 
   // Park every frame on the side it belongs to. Only the active one is on
   // screen; the rest wait just outside the plate, in list order.
@@ -348,7 +368,10 @@ function setupExhibit() {
 
   const activate = (index, { focus = false } = {}) => {
     const next = clamp(index, 0, last);
-    if (focus) tabs[next].focus();
+    if (focus) {
+      tabs[next].focus({ preventScroll:true });
+      revealTab(tabs[next]);
+    }
     if (next === active) return;
     const from = active;
     active = next;
@@ -361,6 +384,7 @@ function setupExhibit() {
     panels.forEach((panel, i) => panel.classList.toggle('is-active', i === active));
     layout(from);
     exhibit.style.setProperty('--i', active);
+    syncListMarker();
     // announced rather than called directly: the decode below is decorative and
     // can be deleted wholesale without this function knowing about it
     exhibit.dispatchEvent(new CustomEvent('exhibitchange', { detail:{ panel:panels[active], previous:panels[from] } }));
@@ -391,6 +415,7 @@ function setupExhibit() {
 
   exhibit.style.setProperty('--i', 0);
   layout();
+  syncListMarker();
 }
 
 // The wall label has no fades left in it. Each run of type rides in its own
