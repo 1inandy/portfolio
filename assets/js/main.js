@@ -128,6 +128,44 @@ function setupRoleSwitcher() {
   ];
   let index = 0;
 
+  // A changing word can rewrap the sentence. Reserve the tallest version of
+  // the headline so that rewrapping stays inside the heading instead of moving
+  // the hero, changing the document's snap geometry, and making the browser
+  // visibly correct its resting scroll position a moment later.
+  const heading = role.closest('h1');
+  const reserveHeadlineHeight = () => {
+    if (!heading) return;
+    const width = heading.getBoundingClientRect().width;
+    if (!width) return;
+
+    const clone = heading.cloneNode(true);
+    const cloneRole = $('.role', clone);
+    if (!cloneRole) return;
+    clone.removeAttribute('id');
+    clone.classList.add('is-revealed', 'is-settled');
+    clone.style.cssText = `position:fixed;left:-10000px;top:0;width:${width}px;max-width:none;min-height:0;margin:0;visibility:hidden;pointer-events:none;`;
+    cloneRole.removeAttribute('id');
+    cloneRole.className = 'role';
+    document.body.append(clone);
+
+    let tallest = 0;
+    roles.forEach(({ text }) => {
+      cloneRole.textContent = text;
+      tallest = Math.max(tallest, clone.scrollHeight);
+    });
+    clone.remove();
+    heading.style.minBlockSize = `${Math.ceil(tallest)}px`;
+  };
+
+  let resizeFrame = 0;
+  const scheduleReservation = () => {
+    cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(reserveHeadlineHeight);
+  };
+  reserveHeadlineHeight();
+  document.fonts?.ready.then(scheduleReservation);
+  addEventListener('resize', scheduleReservation, { passive:true });
+
   const changeRole = async () => {
     const next = roles[(index + 1) % roles.length];
     if (next.transition === 'type') {
@@ -197,7 +235,7 @@ function setupHeadlineReveal() {
 function setupParallax() {
   if (matchMedia('(prefers-reduced-motion: reduce), (pointer: coarse)').matches) return;
   const targets = new Map();
-  $$('.photo img, .project-media img').forEach((img) => targets.set(img, img.closest('.project-media') ? 2.2 : 3.6));
+  $$('.photo img').forEach((img) => targets.set(img, 3.6));
   if (!targets.size) return;
 
   const active = new Set();
@@ -271,6 +309,197 @@ function setupPhotoGallery() {
   updateButton();
 }
 
+// Work: eight projects hang on the wall at once and exactly one is lit. JS only
+// ever moves the index — every visual change (dot, title weight, which frame the
+// filmstrip shows, wall label) is one CSS state sharing the section's single
+// curve, so nothing can drift out of step with anything else.
+function setupExhibit() {
+  const exhibit = $('[data-exhibit]');
+  if (!exhibit) return;
+  const plate = $('.exhibit-plate', exhibit);
+  const list = $('.exhibit-items', exhibit);
+  const tabs = $$('.exhibit-item', exhibit);
+  const panels = $$('.detail', exhibit);
+  const images = $$('.plate-image', exhibit);
+  if (!plate || !list || !tabs.length || tabs.length !== panels.length) return;
+
+  const last = tabs.length - 1;
+  const clamp = (value, min, max) => (value < min ? min : value > max ? max : value);
+
+  let active = 0;
+
+  // Park every frame on the side it belongs to. Only the active one is on
+  // screen; the rest wait just outside the plate, in list order.
+  //
+  // Just the two frames trading places are allowed to travel. Jumping 01 -> 04
+  // would otherwise drag 02 and 03 across the plate on their way from one side
+  // to the other — the strip should carry one frame off and one on, however far
+  // apart they sit in the index. The rest change sides with the transition
+  // suppressed, which is free: they are outside the plate at both ends.
+  const layout = (from = active) => {
+    images.forEach((image, i) => {
+      const on = i === active;
+      image.style.transition = on || i === from ? '' : 'none';
+      image.classList.toggle('is-active', on);
+      image.style.setProperty('--x', on ? '0%' : i < active ? '-100%' : '100%');
+      image.setAttribute('aria-hidden', String(!on)); // one plate is described at a time
+    });
+  };
+
+  const activate = (index, { focus = false } = {}) => {
+    const next = clamp(index, 0, last);
+    if (focus) tabs[next].focus();
+    if (next === active) return;
+    const from = active;
+    active = next;
+    tabs.forEach((tab, i) => {
+      const on = i === active;
+      tab.classList.toggle('is-active', on);
+      tab.setAttribute('aria-selected', String(on));
+      tab.tabIndex = on ? 0 : -1; // roving tab stop — one way into the list, arrows do the rest
+    });
+    panels.forEach((panel, i) => panel.classList.toggle('is-active', i === active));
+    layout(from);
+    exhibit.style.setProperty('--i', active);
+    // announced rather than called directly: the decode below is decorative and
+    // can be deleted wholesale without this function knowing about it
+    exhibit.dispatchEvent(new CustomEvent('exhibitchange', { detail:{ panel:panels[active], previous:panels[from] } }));
+  };
+
+  // Hover is an affordance, not a commitment — the title answers in CSS and
+  // nothing else in the section moves. Only a click or the keyboard changes
+  // which project is lit, so crossing the index never reconfigures the exhibit.
+  tabs.forEach((tab, index) => {
+    tab.addEventListener('click', () => activate(index));
+  });
+
+  const STEPS = { ArrowUp:-1, ArrowLeft:-1, ArrowDown:1, ArrowRight:1 };
+  list.addEventListener('keydown', (event) => {
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    const step = STEPS[event.key];
+    if (step) activate(active + step, { focus:true });
+    else if (event.key === 'Home') activate(0, { focus:true });
+    else if (event.key === 'End') activate(last, { focus:true });
+    else if (event.key === 'Enter' || event.key === ' ') activate(active, { focus:true });
+    else return;
+    event.preventDefault();
+  });
+
+  // The wheel is the page's, not ours. Stepping the exhibit on scroll cost the
+  // reader ~5s of hijacked page to get past eight projects; the index is already
+  // reachable by click and by keyboard, which is where the intent actually is.
+
+  exhibit.style.setProperty('--i', 0);
+  layout();
+}
+
+// The wall label has no fades left in it. Each run of type rides in its own
+// overflow mask: the outgoing panel rolls its lines up and out of frame, the
+// incoming rolls its lines up into frame on a stagger, and the two monospace
+// lines additionally resolve out of noise as they land. Monospace is what lets
+// the scramble and the roll share an element — every substituted glyph is the
+// same width, so the line never changes shape while it moves.
+// Purely additive: without GSAP, or under reduced motion, the type is simply
+// there, which is what the crawler and the screen reader get either way.
+function setupWallLabelMotion() {
+  const exhibit = $('[data-exhibit]');
+  if (!exhibit || !window.gsap || !window.ScrambleTextPlugin) return;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  gsap.registerPlugin(ScrambleTextPlugin);
+
+  const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/\\<>#%*';
+
+  const masked = (text) => {
+    const mask = document.createElement('span');
+    mask.className = 'line-mask';
+    const inner = document.createElement('span');
+    inner.textContent = text;
+    mask.appendChild(inner);
+    return mask;
+  };
+
+  // one mask for the whole line — monospace, so a scramble can rewrite the
+  // inner span without the mask around it changing width
+  const wrapLine = (el) => {
+    if (!el) return null;
+    const mask = masked(el.textContent);
+    el.textContent = '';
+    el.appendChild(mask);
+    return mask.firstChild;
+  };
+
+  // one mask per word — proportional type, so only position is ever animated
+  const wrapWords = (el) => {
+    if (!el) return [];
+    const tokens = el.textContent.split(/(\s+)/);
+    el.textContent = '';
+    return tokens.map((token) => {
+      if (!token.trim()) { el.appendChild(document.createTextNode(token)); return null; }
+      const mask = masked(token);
+      el.appendChild(mask);
+      return mask.firstChild;
+    }).filter(Boolean);
+  };
+
+  // split once per panel and keep it; the copy never changes after this
+  const cache = new Map();
+  const partsOf = (panel) => {
+    if (!cache.has(panel)) cache.set(panel, {
+      label: wrapLine($('.detail-label', panel)),
+      words: wrapWords($('.detail-summary', panel)),
+      stack: wrapLine($('.detail-stack', panel))
+    });
+    return cache.get(panel);
+  };
+  const runs = (p) => [p.label, ...p.words, p.stack].filter(Boolean);
+
+  // the true string is captured once, so an interrupted scramble can never be
+  // mistaken for the real text on the next pass
+  const decode = (el, { duration = .6, delay = 0, speed = .5, revealDelay = 0 } = {}) => {
+    if (!el) return;
+    gsap.killTweensOf(el, 'scrambleText');
+    gsap.to(el, {
+      duration, delay, ease:'none',
+      scrambleText:{ text:(el.dataset.decode ??= el.textContent), chars:GLYPHS, speed, revealDelay }
+    });
+  };
+
+  exhibit.addEventListener('exhibitchange', ({ detail }) => {
+    const { panel, previous } = detail;
+
+    if (previous && previous !== panel) {
+      const leaving = runs(partsOf(previous));
+      // interrupt fires instead of complete when the reader outruns the
+      // animation, so both have to put the panel back the way they found it
+      const settle = () => { previous.classList.remove('is-leaving'); gsap.set(leaving, { yPercent:0 }); };
+      previous.classList.add('is-leaving');
+      gsap.killTweensOf(leaving);
+      gsap.to(leaving, {
+        yPercent:-115, duration:.34, ease:'power3.in', stagger:.012,
+        onComplete:settle, onInterrupt:settle
+      });
+    }
+
+    const parts = partsOf(panel);
+    panel.classList.remove('is-leaving');
+    gsap.killTweensOf(runs(parts));
+    gsap.timeline({ delay:.16 })
+      .fromTo(parts.label, { yPercent:115 }, { yPercent:0, duration:.52, ease:'expo.out' }, 0)
+      .fromTo(parts.words, { yPercent:115 }, { yPercent:0, duration:.62, ease:'expo.out', stagger:.022 }, .05)
+      .fromTo(parts.stack, { yPercent:115 }, { yPercent:0, duration:.52, ease:'expo.out' }, .18);
+
+    decode(parts.label, { duration:.58, delay:.2, revealDelay:.1 });
+    decode(parts.stack, { duration:.52, delay:.38, speed:.65 });
+  });
+
+  $$('.detail-action', exhibit).forEach((link) => {
+    const label = $('.action-label', link);
+    link.addEventListener('pointerenter', (event) => {
+      if (event.pointerType === 'mouse') decode(label, { duration:.4, speed:.8 });
+    });
+  });
+}
+
 function setupCursorLens() {
   const ring = $('.cursor-ring');
   const dot = $('.cursor-dot');
@@ -284,8 +513,7 @@ function setupCursorLens() {
   // media|off" and data-cursor-text="…", so behaviour can move around without editing this.
   const RULES = [
     ['.photo', 3, '', 'is-invert', false],
-    ['.project-media', 2.3, 'view', 'is-media', false],
-    ['.project-name', 2.7, '', 'is-invert', 'rail'],
+    ['.exhibit-item', 2.5, '', 'is-invert', 'rail'],
     ['.award-copy h2', 2.4, '', 'is-invert', 'rail'],
     ['.gallery-toggle', 2.1, '', 'is-invert', true],
     ['.meta-email', 2.1, '', 'is-invert', true],
@@ -293,7 +521,7 @@ function setupCursorLens() {
     ['.duolingo-nudge', 1.75, '', 'is-click', false],
     ['a, button', 1.45, '', 'is-link', false]
   ];
-  const MAGNETIC = '.social-link, .profile-link, .project-repo, .duolingo-nudge';
+  const MAGNETIC = '.social-link, .profile-link, .detail-action, .duolingo-nudge';
   const TONES = ['is-link', 'is-media', 'is-invert', 'is-click'];
   // how far the stuck cursor is allowed to drift off the element's centre toward the pointer
   const STICK_PULL = .11;
@@ -547,4 +775,4 @@ function setupCursorLens() {
   requestAnimationFrame(frame);
 }
 
-loadGitHubContributions(); startClock(); loadDuolingoStatus(); setInterval(loadDuolingoStatus, 5 * 60 * 1000); setupDuolingoNudge(); setupHeadlineReveal(); setupRevealAndNav(); setupParallax(); setupPhotoGallery(); setupRoleSwitcher(); setupCursorLens();
+loadGitHubContributions(); startClock(); loadDuolingoStatus(); setInterval(loadDuolingoStatus, 5 * 60 * 1000); setupDuolingoNudge(); setupHeadlineReveal(); setupRevealAndNav(); setupParallax(); setupPhotoGallery(); setupRoleSwitcher(); setupExhibit(); setupWallLabelMotion(); setupCursorLens();
