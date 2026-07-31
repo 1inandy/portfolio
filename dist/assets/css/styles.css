@@ -183,20 +183,18 @@ h1.is-split .name::after { animation-delay:.95s; }
 .contact-links a:hover .link-arrow { transform:translateX(4px); color:var(--accent); }
 
 /* ── Magnetised scroll ────────────────────────────────────────────────────
-   Proximity, never mandatory: the wheel is never intercepted and the page
-   still stops wherever it is put — the browser only tidies the last few
-   pixels when a rest position lands near a section edge. `section` already
-   carries the scroll-margin-top the rail's anchors use, so a snap and a nav
-   click come to rest in exactly the same place. */
+   A decisive native snap: the wheel stays fully browser-controlled, but every
+   completed gesture commits to a section instead of pausing in the space
+   between two targets. `section` already carries the scroll-margin-top the
+   rail's anchors use, so a snap and a nav click land in the same place. */
 @media (min-width:641px) and (prefers-reduced-motion:no-preference) {
-  html { scroll-snap-type:y proximity; }
+  html { scroll-snap-type:y mandatory; }
   /* The last two sections start below the furthest the page can scroll — the
      document simply isn't tall enough to put them at the top. A snap target
      that can't be reached makes the browser snap as close as it can, which
      slingshots the reader to the very bottom and skips Awards entirely. They
-     stay unsnapped; the nearest real target is then far enough away that
-     proximity leaves the end of the page alone. */
-  main > section:not(#awards):not(#contact) { scroll-snap-align:start; }
+     stay unsnapped so the end of the page remains reachable. */
+  main > section:not(#awards):not(#contact) { scroll-snap-align:start; scroll-snap-stop:always; }
 }
 .awards { padding:68px 0; }.awards > .section-label { margin:0 0 7px; text-align:center; }
 .awards-heading { max-width:470px; margin:0 auto 18px; text-align:center; }.awards-heading .section-label { margin:0 0 7px; }.awards-intro { max-width:none; margin:0; color:var(--muted); font:10.5px/1.5 'JetBrains Mono',monospace; text-align:center; }.award-list { max-width:470px; margin:0 auto; padding:0; list-style:none; border-top:1px solid var(--line); }.award { display:grid; grid-template-columns:46px minmax(0,1fr) 22px; align-items:baseline; gap:14px; padding:14px 0; border-bottom:1px solid var(--line); transition:border-color .25s ease,transform .25s ease; }.award-year,.award-mark { color:#a1a1aa; font:10px 'JetBrains Mono',monospace; }.award-mark { text-align:right; transition:color .25s ease,transform .25s ease; }.award-copy h2 { margin:0; font-size:14px; font-weight:500; letter-spacing:-.015em; }.award-copy p { margin:4px 0 0; color:var(--muted); font:10px/1.4 'JetBrains Mono',monospace; }.award:hover { border-bottom-color:#c2c7ee; transform:translateX(3px); }.award:hover .award-mark { color:var(--accent); transform:translateX(2px); }
