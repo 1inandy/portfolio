@@ -11,6 +11,7 @@ const port = Number(process.env.PORT || 3000);
 const contentTypes = {
   '.css': 'text/css; charset=utf-8',
   '.html': 'text/html; charset=utf-8',
+  '.jpg': 'image/jpeg',
   '.js': 'text/javascript; charset=utf-8',
   '.png': 'image/png',
   '.svg': 'image/svg+xml'
@@ -47,7 +48,8 @@ createServer(async (request, response) => {
   const requestedPath = url.pathname === '/' ? 'index.html' : url.pathname;
   const filePath = normalize(join(root, decodeURIComponent(requestedPath)));
   const relativePath = relative(root, filePath);
-  if (relativePath.startsWith('..') || isAbsolute(relativePath)) {
+  // dotfiles (.env, .git) hold secrets and history, never site content
+  if (relativePath.startsWith('..') || isAbsolute(relativePath) || relativePath.split(/[\\/]/).some((part) => part.startsWith('.'))) {
     response.writeHead(403);
     return response.end();
   }

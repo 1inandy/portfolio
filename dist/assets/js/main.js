@@ -189,7 +189,7 @@ function setupRoleSwitcher() {
 }
 
 // Splits the headline into masked words so each one can rise out of its own line box.
-// `.name` and `.role` are wrapped whole — the role switcher keeps rewriting them, so
+// `.name` and `.role` are wrapped whole — the role switcher keeps rewriting them, sos
 // they must survive untouched.
 function setupHeadlineReveal() {
   const heading = $('h1');
@@ -297,7 +297,7 @@ function setupPhotoGallery() {
   const button = $('[data-gallery-toggle]');
   if (!grid || !button) return;
   const photos = $$('.photo', grid);
-  const initialCount = 5;
+  const initialCount = 6;
   if (photos.length <= initialCount) { button.hidden = true; return; }
 
   const updateButton = () => {
@@ -309,219 +309,117 @@ function setupPhotoGallery() {
   updateButton();
 }
 
-// Work: eight projects hang on the wall at once and exactly one is lit. JS only
-// ever moves the index — every visual change (dot, title weight, which frame the
-// filmstrip shows, wall label) is one CSS state sharing the section's single
-// curve, so nothing can drift out of step with anything else.
-function setupExhibit() {
-  const exhibit = $('[data-exhibit]');
-  if (!exhibit) return;
-  const plate = $('.exhibit-plate', exhibit);
-  const list = $('.exhibit-items', exhibit);
-  const marker = $('.exhibit-dot', exhibit);
-  const tabs = $$('.exhibit-item', exhibit);
-  const panels = $$('.detail', exhibit);
-  const images = $$('.plate-image', exhibit);
-  if (!plate || !list || !tabs.length || tabs.length !== panels.length) return;
+// The grid is a contact sheet; this is the loupe. Each figure carries its own capture
+// data as attributes, so the viewer reads the DOM rather than a parallel table.
+function setupPhotoViewer() {
+  const viewer = $('#photo-viewer');
+  const grid = $('.photo-grid');
+  if (!viewer || !grid) return;
+  const image = $('#viewer-image', viewer);
+  const title = $('#viewer-title', viewer);
+  const count = $('.viewer-count', viewer);
+  const exif = $('#viewer-exif', viewer);
+  const steps = $$('[data-viewer-step]', viewer);
+  const panel = $('.viewer-panel', viewer);
+  const figure = $('.viewer-figure', viewer);
+  const photos = $$('.photo', grid);
+  // label → attribute, in the order a photographer would read them off
+  const FIELDS = [['Taken','shot'], ['Camera','cam'], ['Lens','lens'], ['Focal length','focal'], ['Aperture','ap'], ['Shutter','sh'], ['Sensitivity','iso']];
+  let index = -1;
+  let opener = null;
+  let clearing = 0;
 
-  const last = tabs.length - 1;
-  const clamp = (value, min, max) => (value < min ? min : value > max ? max : value);
+  // Only the photos currently on the contact sheet can be stepped through, so collapsing
+  // the grid while the viewer is open cannot strand it on a hidden frame.
+  const visible = () => photos.filter((photo) => photo.offsetParent !== null || photo === photos[index]);
 
-  let active = 0;
+  const full = (photo) => $('img', photo).getAttribute('src').replace('assets/photos/', 'assets/photos/full/');
+  const preload = (photo) => { if (photo) new Image().src = full(photo); };
 
-  // The index is a five-row viewport. The marker stays geometrically tied to
-  // its active row as that viewport scrolls, then disappears when its row is
-  // outside the visible slice instead of drifting into the empty space below.
-  const syncListMarker = () => {
-    if (!marker) return;
-    marker.style.translate = `0 ${-list.scrollTop}px`;
-    const tab = tabs[active];
-    const top = tab.offsetTop - list.scrollTop;
-    marker.style.opacity = top + tab.offsetHeight > 0 && top < list.clientHeight ? '' : '0';
-  };
-  list.addEventListener('scroll', syncListMarker, { passive:true });
-
-  const revealTab = (tab) => {
-    const top = tab.offsetTop;
-    const bottom = top + tab.offsetHeight;
-    if (top < list.scrollTop) list.scrollTo({ top, behavior:'smooth' });
-    else if (bottom > list.scrollTop + list.clientHeight) list.scrollTo({ top:bottom - list.clientHeight, behavior:'smooth' });
-  };
-
-  // Park every frame on the side it belongs to. Only the active one is on
-  // screen; the rest wait just outside the plate, in list order.
-  //
-  // Just the two frames trading places are allowed to travel. Jumping 01 -> 04
-  // would otherwise drag 02 and 03 across the plate on their way from one side
-  // to the other — the strip should carry one frame off and one on, however far
-  // apart they sit in the index. The rest change sides with the transition
-  // suppressed, which is free: they are outside the plate at both ends.
-  const layout = (from = active) => {
-    images.forEach((image, i) => {
-      const on = i === active;
-      image.style.transition = on || i === from ? '' : 'none';
-      image.classList.toggle('is-active', on);
-      image.style.setProperty('--x', on ? '0%' : i < active ? '-100%' : '100%');
-      image.setAttribute('aria-hidden', String(!on)); // one plate is described at a time
+  const show = (next) => {
+    const list = visible();
+    const photo = photos[next];
+    if (!photo) return;
+    index = next;
+    const img = $('img', photo);
+    image.src = full(photo);
+    image.alt = img.alt;
+    title.textContent = $('figcaption span', photo).textContent;
+    const place = list.indexOf(photo) + 1;
+    count.textContent = `${String(place).padStart(2, '0')} / ${String(list.length).padStart(2, '0')}`;
+    exif.replaceChildren(...FIELDS.filter(([, key]) => photo.dataset[key]).map(([label, key]) => {
+      const pair = document.createElement('div');
+      const dt = document.createElement('dt');
+      const dd = document.createElement('dd');
+      dt.textContent = label;
+      dd.textContent = photo.dataset[key];
+      pair.append(dt, dd);
+      return pair;
+    }));
+    const at = list.indexOf(photo);
+    steps.forEach((button) => {
+      const to = at + Number(button.dataset.viewerStep);
+      button.disabled = to < 0 || to >= list.length;
     });
+    preload(list[at + 1]); preload(list[at - 1]);
   };
 
-  const activate = (index, { focus = false } = {}) => {
-    const next = clamp(index, 0, last);
-    if (focus) {
-      tabs[next].focus({ preventScroll:true });
-      revealTab(tabs[next]);
+  const step = (delta) => {
+    const list = visible();
+    const to = list.indexOf(photos[index]) + delta;
+    if (to < 0 || to >= list.length) return;
+    show(photos.indexOf(list[to]));
+  };
+
+  const close = () => {
+    viewer.classList.remove('is-open');
+    document.body.classList.remove('viewer-open');
+    const done = () => { viewer.hidden = true; image.removeAttribute('src'); };
+    // the fade-out still needs the frame on screen, so the teardown waits it out —
+    // reopening inside that window cancels it rather than blanking the new photo
+    clearTimeout(clearing);
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) done();
+    else clearing = setTimeout(done, 320);
+    if (opener) opener.focus();
+    opener = null;
+    index = -1;
+  };
+
+  const open = (photo, trigger) => {
+    opener = trigger;
+    clearTimeout(clearing);
+    viewer.hidden = false;
+    show(photos.indexOf(photo));
+    document.body.classList.add('viewer-open');
+    requestAnimationFrame(() => viewer.classList.add('is-open'));
+    $('.viewer-close', viewer).focus();
+  };
+
+  grid.addEventListener('click', (event) => {
+    const trigger = event.target.closest('[data-photo-open]');
+    if (!trigger) return;
+    open(trigger.closest('.photo'), trigger);
+  });
+
+  viewer.addEventListener('click', (event) => {
+    // the panel fills the screen, so a click that lands on it rather than on the
+    // photo or its caption is a click on the dark room: treat it as dismissal
+    if (event.target.closest('[data-viewer-close]') || event.target === panel || event.target === figure) { close(); return; }
+    const stepper = event.target.closest('[data-viewer-step]');
+    if (stepper) step(Number(stepper.dataset.viewerStep));
+  });
+
+  addEventListener('keydown', (event) => {
+    if (viewer.hidden) return;
+    if (event.key === 'Escape') { close(); return; }
+    if (event.key === 'ArrowLeft') { event.preventDefault(); step(-1); }
+    if (event.key === 'ArrowRight') { event.preventDefault(); step(1); }
+    // the dialog is the only thing on screen, so keep the tab ring inside it
+    if (event.key === 'Tab') {
+      const focusable = $$('button:not([disabled])', viewer);
+      const edge = event.shiftKey ? focusable[0] : focusable[focusable.length - 1];
+      if (document.activeElement === edge) { event.preventDefault(); (event.shiftKey ? focusable[focusable.length - 1] : focusable[0]).focus(); }
     }
-    if (next === active) return;
-    const from = active;
-    active = next;
-    tabs.forEach((tab, i) => {
-      const on = i === active;
-      tab.classList.toggle('is-active', on);
-      tab.setAttribute('aria-selected', String(on));
-      tab.tabIndex = on ? 0 : -1; // roving tab stop — one way into the list, arrows do the rest
-    });
-    panels.forEach((panel, i) => panel.classList.toggle('is-active', i === active));
-    layout(from);
-    exhibit.style.setProperty('--i', active);
-    syncListMarker();
-    // announced rather than called directly: the decode below is decorative and
-    // can be deleted wholesale without this function knowing about it
-    exhibit.dispatchEvent(new CustomEvent('exhibitchange', { detail:{ panel:panels[active], previous:panels[from] } }));
-  };
-
-  // Hover is an affordance, not a commitment — the title answers in CSS and
-  // nothing else in the section moves. Only a click or the keyboard changes
-  // which project is lit, so crossing the index never reconfigures the exhibit.
-  tabs.forEach((tab, index) => {
-    tab.addEventListener('click', () => activate(index));
-  });
-
-  const STEPS = { ArrowUp:-1, ArrowLeft:-1, ArrowDown:1, ArrowRight:1 };
-  list.addEventListener('keydown', (event) => {
-    if (event.metaKey || event.ctrlKey || event.altKey) return;
-    const step = STEPS[event.key];
-    if (step) activate(active + step, { focus:true });
-    else if (event.key === 'Home') activate(0, { focus:true });
-    else if (event.key === 'End') activate(last, { focus:true });
-    else if (event.key === 'Enter' || event.key === ' ') activate(active, { focus:true });
-    else return;
-    event.preventDefault();
-  });
-
-  // The wheel is the page's, not ours. Stepping the exhibit on scroll cost the
-  // reader ~5s of hijacked page to get past eight projects; the index is already
-  // reachable by click and by keyboard, which is where the intent actually is.
-
-  exhibit.style.setProperty('--i', 0);
-  layout();
-  syncListMarker();
-}
-
-// The wall label has no fades left in it. Each run of type rides in its own
-// overflow mask: the outgoing panel rolls its lines up and out of frame, the
-// incoming rolls its lines up into frame on a stagger, and the two monospace
-// lines additionally resolve out of noise as they land. Monospace is what lets
-// the scramble and the roll share an element — every substituted glyph is the
-// same width, so the line never changes shape while it moves.
-// Purely additive: without GSAP, or under reduced motion, the type is simply
-// there, which is what the crawler and the screen reader get either way.
-function setupWallLabelMotion() {
-  const exhibit = $('[data-exhibit]');
-  if (!exhibit || !window.gsap || !window.ScrambleTextPlugin) return;
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  gsap.registerPlugin(ScrambleTextPlugin);
-
-  const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/\\<>#%*';
-
-  const masked = (text) => {
-    const mask = document.createElement('span');
-    mask.className = 'line-mask';
-    const inner = document.createElement('span');
-    inner.textContent = text;
-    mask.appendChild(inner);
-    return mask;
-  };
-
-  // one mask for the whole line — monospace, so a scramble can rewrite the
-  // inner span without the mask around it changing width
-  const wrapLine = (el) => {
-    if (!el) return null;
-    const mask = masked(el.textContent);
-    el.textContent = '';
-    el.appendChild(mask);
-    return mask.firstChild;
-  };
-
-  // one mask per word — proportional type, so only position is ever animated
-  const wrapWords = (el) => {
-    if (!el) return [];
-    const tokens = el.textContent.split(/(\s+)/);
-    el.textContent = '';
-    return tokens.map((token) => {
-      if (!token.trim()) { el.appendChild(document.createTextNode(token)); return null; }
-      const mask = masked(token);
-      el.appendChild(mask);
-      return mask.firstChild;
-    }).filter(Boolean);
-  };
-
-  // split once per panel and keep it; the copy never changes after this
-  const cache = new Map();
-  const partsOf = (panel) => {
-    if (!cache.has(panel)) cache.set(panel, {
-      label: wrapLine($('.detail-label', panel)),
-      words: wrapWords($('.detail-summary', panel)),
-      stack: wrapLine($('.detail-stack', panel))
-    });
-    return cache.get(panel);
-  };
-  const runs = (p) => [p.label, ...p.words, p.stack].filter(Boolean);
-
-  // the true string is captured once, so an interrupted scramble can never be
-  // mistaken for the real text on the next pass
-  const decode = (el, { duration = .6, delay = 0, speed = .5, revealDelay = 0 } = {}) => {
-    if (!el) return;
-    gsap.killTweensOf(el, 'scrambleText');
-    gsap.to(el, {
-      duration, delay, ease:'none',
-      scrambleText:{ text:(el.dataset.decode ??= el.textContent), chars:GLYPHS, speed, revealDelay }
-    });
-  };
-
-  exhibit.addEventListener('exhibitchange', ({ detail }) => {
-    const { panel, previous } = detail;
-
-    if (previous && previous !== panel) {
-      const leaving = runs(partsOf(previous));
-      // interrupt fires instead of complete when the reader outruns the
-      // animation, so both have to put the panel back the way they found it
-      const settle = () => { previous.classList.remove('is-leaving'); gsap.set(leaving, { yPercent:0 }); };
-      previous.classList.add('is-leaving');
-      gsap.killTweensOf(leaving);
-      gsap.to(leaving, {
-        yPercent:-115, duration:.34, ease:'power3.in', stagger:.012,
-        onComplete:settle, onInterrupt:settle
-      });
-    }
-
-    const parts = partsOf(panel);
-    panel.classList.remove('is-leaving');
-    gsap.killTweensOf(runs(parts));
-    gsap.timeline({ delay:.16 })
-      .fromTo(parts.label, { yPercent:115 }, { yPercent:0, duration:.52, ease:'expo.out' }, 0)
-      .fromTo(parts.words, { yPercent:115 }, { yPercent:0, duration:.62, ease:'expo.out', stagger:.022 }, .05)
-      .fromTo(parts.stack, { yPercent:115 }, { yPercent:0, duration:.52, ease:'expo.out' }, .18);
-
-    decode(parts.label, { duration:.58, delay:.2, revealDelay:.1 });
-    decode(parts.stack, { duration:.52, delay:.38, speed:.65 });
-  });
-
-  $$('.detail-action', exhibit).forEach((link) => {
-    const label = $('.action-label', link);
-    link.addEventListener('pointerenter', (event) => {
-      if (event.pointerType === 'mouse') decode(label, { duration:.4, speed:.8 });
-    });
   });
 }
 
@@ -536,17 +434,27 @@ function setupCursorLens() {
   // [selector, ring scale, caption, tone, sticks] — first match wins, so specific rules
   // sit above `a, button`. Any element can override with data-cursor="stick|invert|link|
   // media|off" and data-cursor-text="…", so behaviour can move around without editing this.
+  // A row of icons or a grid of photographs is one hover region, not five.
+  // Matching the container rather than each child means the tone, the size and
+  // the caption hold steady across the gaps between them, instead of the disc
+  // resolving and re-resolving every few pixels as the pointer crosses a seam —
+  // which read as a flicker and made the whole row feel unclickable.
   const RULES = [
-    ['.photo', 3, '', 'is-invert', false],
-    ['.exhibit-item', 2.5, '', 'is-invert', 'rail'],
-    ['.award-copy h2', 2.4, '', 'is-invert', 'rail'],
+    ['.photo-grid', 3, 'open', 'is-invert', false],
+    // A row is a link across the full column, not a one-word tab: the old
+    // index's big inverted disc sat on top of the copy being read. Same
+    // treatment as a signal card, which is the page's other whole-element link.
+    ['.work-repo', 1.6, 'source', 'is-link', false],
+    ['.work-row', 1.9, 'visit', 'is-link', false],
+    ['.publication-copy h2', 2.4, '', 'is-invert', 'rail'],
     ['.gallery-toggle', 2.1, '', 'is-invert', true],
     ['.meta-email', 2.1, '', 'is-invert', true],
     ['.signal', 1.7, 'visit', 'is-link', false],
     ['.duolingo-nudge', 1.75, '', 'is-click', false],
+    ['.rail-nav, .rail-socials, .profile-links, .contact-links', 1.45, '', 'is-link', false],
     ['a, button', 1.45, '', 'is-link', false]
   ];
-  const MAGNETIC = '.social-link, .profile-link, .detail-action, .duolingo-nudge';
+  const MAGNETIC = '.social-link, .profile-link, .work-repo, .work-more-link, .duolingo-nudge';
   const TONES = ['is-link', 'is-media', 'is-invert', 'is-click'];
   // how far the stuck cursor is allowed to drift off the element's centre toward the pointer
   const STICK_PULL = .11;
@@ -607,7 +515,7 @@ function setupCursorLens() {
   let angle = 0;
   let hovered = null, lastTarget = null;
   let magnetWanted = null, magnetNode = null, stickNode = null, stickMotion = '';
-  let targetScale = 1, held = 0, awake = 0, engaged = false, hideDot = false, clickWanted = false;
+  let targetScale = 1, held = 0, awake = 0, engaged = false, clickWanted = false, liquidTone = '';
   let captionText = '', pendingCaption = '';
   let last = performance.now(), carry = 0;
 
@@ -627,13 +535,24 @@ function setupCursorLens() {
       const tagged = target.closest('[data-cursor]');
       if (tagged && (!hit || hit.contains(tagged))) { hit = tagged; rule = null; }
     }
-    if (hit === hovered) return;
+    // The magnet stays per-element even where the rule is per-group: the icon row
+    // is one hover region so the disc holds steady across it, but the single icon
+    // actually under the pointer is still what leans. That means resolving it off
+    // the event target, and before the early-out below — moving from one icon to
+    // the next never changes which container was hit.
+    const magnet = hit && target.closest ? target.closest(MAGNETIC) : null;
+
+    if (hit === hovered) {
+      magnetWanted = stickNode || magnet;
+      return;
+    }
     hovered = hit;
 
     const mode = hit ? hit.dataset.cursor || '' : '';
     const ruleMotion = !mode && rule ? rule[4] : '';
     const sticks = Boolean(hit) && mode !== 'off' && (mode === 'stick' || Boolean(ruleMotion));
     const tone = !hit || mode === 'off' ? '' : MODE_TONES[mode] || (rule ? rule[3] : 'is-link');
+    liquidTone = tone;
 
     // a bare data-cursor with no matching rule still needs a sensible size for its tone
     const fallbackScale = tone === 'is-invert' ? 2.4 : tone === 'is-media' ? 2.3 : 1.45;
@@ -641,14 +560,10 @@ function setupCursorLens() {
     pendingCaption = !hit || mode === 'off' ? '' : hit.dataset.cursorText ?? (rule ? rule[2] : '');
     stickNode = sticks ? hit : null;
     stickMotion = sticks ? (mode === 'stick' ? 'stick' : ruleMotion) : '';
-    // The dot marks the true pointer. It earns its place when the ring has left the pointer
-    // (stick), but inside a big disc already centred on the pointer it is just grit.
-    hideDot = Boolean((tone === 'is-invert' || tone === 'is-click') && !sticks);
     clickWanted = tone === 'is-click';
     // a stuck element is its own magnet, so the disc parks while the element leans
-    magnetWanted = !hit ? null : sticks ? hit : hit.closest(MAGNETIC);
+    magnetWanted = sticks ? hit : magnet;
     TONES.forEach((name) => ring.classList.toggle(name, name === tone));
-    dot.classList.toggle('is-inverted', Boolean(tone) && tone !== 'is-invert');
   };
 
   const frame = (now) => {
@@ -688,7 +603,7 @@ function setupCursorLens() {
       const midX = stickBox.left + stickBox.width / 2;
       const midY = stickBox.top + stickBox.height / 2;
       if (stickMotion === 'rail') {
-        // Titles and awards become a horizontal rail: the disc glides over the glyphs
+        // Titles and publication headings become a horizontal rail: the disc glides over the glyphs
         // but stays vertically seated on their optical centre.
         aimX = pointer.x;
         aimY = midY + (pointer.y - midY) * .025;
@@ -699,7 +614,13 @@ function setupCursorLens() {
     }
 
     const captionTarget = captionText && captionText === pendingCaption ? 1 : 0;
-    const dotTarget = pendingCaption || hideDot ? 0 : 1; // the caption owns the centre when there is one
+    // The dot is the hit point. The disc is a lens — it is large, it lags the
+    // pointer by design, and on a stuck element it deliberately is not on the
+    // pointer at all, so over anything clickable the dot says where the click
+    // will actually land. Off a target there is nothing to aim at and the disc
+    // has the screen to itself. The caption and the click glyph both occupy the
+    // same centre, so the dot yields to either.
+    const dotTarget = hovered && !pendingCaption && !clickWanted ? 1 : 0;
 
     // A parked disc wants a slower, heavier settle than a cursor chasing the pointer:
     // 2.6Hz and slightly overdamped, so it glides in and holds instead of twitching.
@@ -758,6 +679,7 @@ function setupCursorLens() {
       caption.style.opacity = (shell.x * captionFade.x).toFixed(3);
       click.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) scale(${(1 - press.x * .1).toFixed(3)})`;
       click.style.opacity = (shell.x * clickFade.x).toFixed(3);
+      window.liquidCursor?.setState({ x:ringX.x, y:ringY.x, scale:body, tone:liquidTone, precise:Boolean(hovered) });
       if (magnetNode) magnetNode.style.translate = `${pullX.x.toFixed(2)}px ${pullY.x.toFixed(2)}px`;
     }
     requestAnimationFrame(frame);
@@ -785,10 +707,9 @@ function setupCursorLens() {
     stickMotion = '';
     targetScale = 1;
     pendingCaption = '';
-    hideDot = false;
     clickWanted = false;
+    liquidTone = '';
     ring.classList.remove(...TONES);
-    dot.classList.remove('is-inverted');
   };
 
   addEventListener('pointermove', move, { passive:true });
@@ -800,4 +721,30 @@ function setupCursorLens() {
   requestAnimationFrame(frame);
 }
 
-loadGitHubContributions(); startClock(); loadDuolingoStatus(); setInterval(loadDuolingoStatus, 5 * 60 * 1000); setupDuolingoNudge(); setupHeadlineReveal(); setupRevealAndNav(); setupParallax(); setupPhotoGallery(); setupRoleSwitcher(); setupExhibit(); setupWallLabelMotion(); setupCursorLens();
+// Center the Work index in the viewport it snaps into. The padding is fixed, so
+// a row opening on hover grows the section downward instead of nudging everything
+// above it; to keep that open state centered, the table is measured as if its
+// tallest row were already open, which parks the resting list a little high.
+function setupWorkCentering() {
+  const section = $('.work');
+  const table = $('.work-table', section || undefined);
+  if (!section || !table) return;
+  const center = () => {
+    const rail = $('.rail');
+    const offset = rail && getComputedStyle(rail).position === 'sticky' ? rail.offsetHeight : 0;
+    // on touch the summaries are always out, so they are already in the measure
+    const opens = matchMedia('(hover:hover)').matches ? $$('.work-row', table).map((row) =>
+      $$('.work-say,.work-award', row).reduce((sum, line, index) => sum
+        + (line.classList.contains('work-say') ? Math.min(line.scrollHeight, 60) + 25 : Math.min(line.scrollHeight, 34) + (index > 1 ? 3 : 9)), 0)) : [];
+    const last = section.lastElementChild;
+    const content = last.offsetTop + last.offsetHeight - section.firstElementChild.offsetTop + Math.max(0, ...opens);
+    section.style.setProperty('--work-pad', `${Math.max(0, Math.floor((innerHeight - offset - content) / 2))}px`);
+  };
+  let frame = 0;
+  const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(center); };
+  center();
+  document.fonts?.ready.then(schedule);
+  addEventListener('resize', schedule, { passive:true });
+}
+
+loadGitHubContributions(); startClock(); loadDuolingoStatus(); setInterval(loadDuolingoStatus, 5 * 60 * 1000); setupDuolingoNudge(); setupHeadlineReveal(); setupRevealAndNav(); setupParallax(); setupPhotoGallery(); setupPhotoViewer(); setupRoleSwitcher(); setupCursorLens(); setupWorkCentering();

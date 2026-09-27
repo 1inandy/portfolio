@@ -4,26 +4,31 @@
 * { box-sizing:border-box; }
 html { scroll-behavior:smooth; }
 body { margin:0; background:#fff; color:var(--ink); font-family:Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
-.cursor-dot,.cursor-ring,.cursor-label,.cursor-click { position:fixed; top:0; left:0; opacity:0; pointer-events:none; will-change:transform,opacity; }
-.cursor-ring { z-index:100; width:34px; height:34px; border:1px solid rgba(24,24,27,.3); border-radius:50%; background:rgba(24,24,27,.035); transition:background-color .3s cubic-bezier(.22,1,.36,1),border-color .3s cubic-bezier(.22,1,.36,1); }
-.cursor-ring.is-link { border-color:transparent; background:rgba(24,24,27,.93); }
-.cursor-ring.is-media { border-color:transparent; background:rgba(75,87,209,.92); }
-.cursor-ring.is-click { border-color:rgba(255,255,255,.8); background:rgba(67,140,0,.9); box-shadow:0 5px 14px rgba(67,140,0,.22); }
-/* white + difference reads as a solid black disc on the page and flips the type under it to white */
-.cursor-ring.is-invert { border-color:transparent; background:#fff; mix-blend-mode:difference; }
-.cursor-label { z-index:101; color:#fff; font:500 8.5px/1 'JetBrains Mono',monospace; letter-spacing:.12em; text-transform:uppercase; white-space:nowrap; }
-.cursor-click { z-index:102; width:18px; height:18px; color:#fff; }
+.point-cloud { position:fixed; inset:0; z-index:0; display:block; width:100vw; height:100vh; pointer-events:none; transition:opacity .2s ease; }
+.liquid-cursor { position:fixed; inset:0; z-index:999; display:block; width:100vw; height:100vh; opacity:0; pointer-events:none; transition:opacity 120ms ease; }
+.liquid-cursor.is-visible { opacity:1; }
+.liquid-cursor.is-cut { mix-blend-mode:difference; }
+.liquid-cursor-active,.liquid-cursor-active * { cursor:none !important; }
+.cursor-ring,.cursor-dot,.cursor-label,.cursor-click { position:fixed; top:0; left:0; opacity:0; pointer-events:none; will-change:transform,opacity; }
+/* The ring is now only a spring: the liquid canvas draws what it computes. The
+   dot still draws, because the canvas cannot do this job — it is the one mark
+   sitting exactly on the pointer, and it appears over anything clickable so the
+   large, lagging disc never has to be aimed with. Difference blending keeps it
+   legible on the page, on a solid blob and on an inverted one alike. */
+.cursor-ring { visibility:hidden; width:34px; height:34px; }
+.cursor-dot { z-index:1002; width:5px; height:5px; border-radius:50%; background:#fff; mix-blend-mode:difference; }
+.cursor-label { z-index:1000; color:#fff; font:500 8.5px/1 'JetBrains Mono',monospace; letter-spacing:.12em; text-transform:uppercase; white-space:nowrap; }
+.cursor-click { z-index:1001; width:18px; height:18px; color:#fff; }
 .cursor-click svg { display:block; width:100%; height:100%; fill:currentColor; stroke:currentColor; stroke-linecap:round; stroke-linejoin:round; stroke-width:1.7; }
-.cursor-dot { z-index:103; width:5px; height:5px; border-radius:50%; background:var(--ink); transition:background-color .3s cubic-bezier(.22,1,.36,1); }
-.cursor-dot.is-inverted { background:#fff; }
 .has-cursor-lens,.has-cursor-lens * { cursor:none !important; }
 a { color:inherit; text-decoration:none; }
 a:hover { color:var(--accent); }
 .page { position:relative; z-index:1; min-height:100vh; padding-left:70px; }
-.rail { position:fixed; inset:0 auto 0 0; z-index:10; width:70px; padding:24px 0; background:#fff; display:flex; flex-direction:column; align-items:center; }
+.rail { position:fixed; inset:0 auto 0 0; z-index:10; width:70px; padding:24px 0; background:transparent; display:flex; flex-direction:column; align-items:center; }
 .social-link { display:grid; place-items:center; color:#52525b; font-family:'JetBrains Mono',monospace; }
-.rail-links,.rail-socials { display:flex; flex-direction:column; align-items:center; gap:18px; }
-.rail-links { height:calc(100vh - 48px); justify-content:center; gap:26px; }
+.rail-links,.rail-socials,.rail-nav { display:flex; flex-direction:column; align-items:center; gap:18px; }
+.rail-links { height:calc(100vh - 48px); justify-content:center; }
+.rail-nav { gap:26px; }
 .rail-links a { writing-mode:vertical-rl; transform:rotate(180deg); font:11px 'JetBrains Mono',monospace; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); }
 .rail-links a.is-active { color:var(--ink); }
 .social-link { width:34px; height:34px; border:0; border-radius:0; font-size:10.5px; }
@@ -32,7 +37,7 @@ a:hover { color:var(--accent); }
 .rail-socials { position:absolute; bottom:24px; gap:12px; }
 main { max-width:900px; margin:0 auto; padding:0 48px; }
 section { scroll-margin-top:60px; }
-.hero { position:relative; padding:112px 0 0; }
+.hero { position:relative; padding:56px 0 0; }
 h1 { max-width:470px; margin:0 0 16px; font-size:clamp(22px,2.35vw,29px); line-height:1.22; letter-spacing:-.025em; }
 h1 .h-mask { display:inline-block; overflow:hidden; vertical-align:top; }
 h1 .h-word { display:inline-block; transform:translateY(115%); opacity:0; transition:transform .95s cubic-bezier(.22,1,.36,1),opacity .7s ease; transition-delay:calc(var(--i,0) * 42ms); }
@@ -48,18 +53,24 @@ h1.is-split .name::after { animation-delay:.95s; }
 .role--paste { animation:role-paste .4s cubic-bezier(.22,1,.36,1) both; }.role--highlight { animation:role-highlight .55s cubic-bezier(.22,1,.36,1) both; }.role--fade { animation:role-fade .4s ease both; }
 @keyframes name-mark { to { transform:scaleX(1); } } @keyframes cursor-blink { 50% { opacity:0; } } @keyframes role-leave { to { opacity:0; } } @keyframes role-swipe-out { to { opacity:0; transform:translateX(-.32em); clip-path:inset(0 0 0 100%); } } @keyframes role-swipe-in { from { opacity:0; transform:translateX(.32em); clip-path:inset(0 100% 0 0); } to { opacity:1; transform:none; clip-path:inset(0); } } @keyframes role-paste { 0% { opacity:0; transform:translateY(-.22em); filter:blur(1px); } 65% { opacity:1; transform:translateY(.03em); } 100% { transform:none; filter:none; } } @keyframes role-highlight { 0% { background:linear-gradient(#c2c7ee,#c2c7ee) 0 100% / 0 38% no-repeat; } 100% { background:linear-gradient(#c2c7ee,#c2c7ee) 0 100% / 100% 38% no-repeat; } } @keyframes role-fade { from { opacity:0; filter:blur(2px); } to { opacity:1; filter:none; } }
 .eyebrow,.meta,.section-label,.signal-title,.signal-note,.preview-caption { font-family:'JetBrains Mono',monospace; }
-.meta { margin:0 0 40px; color:var(--muted); font-size:12px; }.meta p { margin:0; }.meta-email { display:inline-block; margin-top:7px; color:var(--muted); font-size:11px; transition:color .2s ease; }.meta-email:hover { color:var(--accent); }
-.profile-links { display:flex; gap:18px; }
+.meta { margin:0 0 22px; color:var(--muted); font-size:12px; }.meta p { margin:0; }.meta-email { display:inline-block; margin-top:7px; color:var(--muted); font-size:11px; transition:color .2s ease; }.meta-email:hover { color:var(--accent); }
+/* fit-content, not the full column: the cursor treats this row as one hover
+   region, so its box must stop at the last icon instead of running to the
+   margin and inverting over empty page. Same for the other grouped rows. */
+.profile-links { display:flex; width:fit-content; gap:18px; }
 .profile-link { display:flex; flex-direction:column; align-items:center; gap:7px; color:#a1a1aa; font:10px 'JetBrains Mono',monospace; }
 .profile-badge { width:28px; height:28px; display:grid; place-items:center; color:var(--ink); }
 .profile-badge span { display:grid; place-items:center; }
 .profile-badge svg { width:17px; height:17px; fill:currentColor; }
-.hero-signals { position:relative; isolation:isolate; padding:44px 0 96px; }
+.hero-signals { position:relative; isolation:isolate; padding:26px 0 76px; }
+/* Short windows: keep the signal cards on the first screen. */
+@media (max-height:740px) { .hero { padding-top:32px; }.meta { margin-bottom:14px; }.hero-signals { padding-top:18px; } }
 .hero-signals > .section-label { position:relative; z-index:2; }
 .section-label { margin:0 0 16px; color:#a1a1aa; font-size:11px; letter-spacing:.1em; text-transform:uppercase; }
 .signal-grid { position:relative; z-index:2; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; max-width:520px; }
-.signal { padding:15px 16px; border:1px solid #e4e4e7; border-radius:10px; }
-.duolingo-widget { position:relative; grid-column:auto; margin-bottom:39px; }.signal--duolingo,.signal--local { height:147px; }.signal--duolingo { display:block; padding:19px 20px; transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease; }.signal--duolingo:hover { color:inherit; border-color:#b8e88b; box-shadow:0 6px 20px rgba(88,204,2,.1); transform:translateY(-2px); }.duolingo-footer { position:absolute; right:12px; bottom:12px; left:20px; display:flex; align-items:center; gap:9px; height:24px; }.duolingo-footer .streak { display:flex; flex:1; gap:4px; margin:0; }.duolingo-footer .streak span { align-self:center; }.duolingo-nudge { display:grid; flex:0 0 24px; width:24px; height:24px; padding:0; place-items:center; border:1px solid #b8e88b; border-radius:50%; background:#f3fce9; color:#438c00; cursor:pointer; transition:background .2s ease,transform .2s ease,box-shadow .2s ease; }.duolingo-nudge svg { width:12px; height:12px; fill:none; stroke:currentColor; stroke-linecap:round; stroke-linejoin:round; stroke-width:1.8; }.duolingo-nudge:hover:not(:disabled) { background:#e5f7d2; box-shadow:0 3px 9px rgba(88,204,2,.18); transform:translateY(-1px); }.duolingo-nudge:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }.duolingo-nudge:disabled { cursor:default; opacity:.7; }.duolingo-callout { position:absolute; top:154px; right:20px; max-width:185px; margin:0; color:#438c00; font:10px/1.35 'JetBrains Mono',monospace; text-align:right; }.duolingo-callout-arrow { display:inline-block; margin-left:4px; font-size:inherit; line-height:inherit; }.duolingo-nudge-note { position:absolute; top:154px; right:1px; left:1px; min-height:13px; margin:0; color:#a1a1aa; font:10px/1.3 'JetBrains Mono',monospace; }.signal--local { padding:19px 20px; }.local-clock-row { display:flex; align-items:center; gap:10px; }.analog-clock { width:44px; height:44px; overflow:visible; color:var(--accent); shape-rendering:crispEdges; }.analog-clock circle:first-child { fill:#f3f4ff; stroke:currentColor; stroke-width:2; }.analog-clock path { fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:square; }.analog-hour { stroke-width:3 !important; }.analog-minute { stroke:#52525b !important; }.analog-pin { fill:currentColor; }.local-clock-row .clock { display:flex; align-items:center; min-height:44px; line-height:1; }
+.signal { position:relative; padding:15px 16px; border:1px solid #e7e7ec; border-radius:12px; background:linear-gradient(180deg,#fff,#fbfbfa); box-shadow:0 1px 2px rgba(24,24,27,.05),0 12px 26px -20px rgba(24,24,27,.35); transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease; }
+.signal:hover { border-color:#dedee5; box-shadow:0 2px 4px rgba(24,24,27,.06),0 18px 34px -22px rgba(24,24,27,.4); transform:translateY(-2px); }
+.duolingo-widget { position:relative; grid-column:auto; margin-bottom:39px; }.signal--duolingo,.signal--local { height:147px; }.signal--duolingo { display:block; padding:19px 20px; transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease; }.signal--duolingo:hover { color:inherit; border-color:#c2e79c; box-shadow:0 2px 4px rgba(24,24,27,.06),0 16px 30px -20px rgba(88,204,2,.55); transform:translateY(-2px); }.duolingo-footer { position:absolute; right:12px; bottom:12px; left:20px; display:flex; align-items:center; gap:9px; height:24px; }.duolingo-footer .streak { display:flex; flex:1; gap:4px; margin:0; }.duolingo-footer .streak span { align-self:center; }.duolingo-nudge { display:grid; flex:0 0 24px; width:24px; height:24px; padding:0; place-items:center; border:1px solid #b8e88b; border-radius:50%; background:#f3fce9; color:#438c00; cursor:pointer; transition:background .2s ease,transform .2s ease,box-shadow .2s ease; }.duolingo-nudge svg { width:12px; height:12px; fill:none; stroke:currentColor; stroke-linecap:round; stroke-linejoin:round; stroke-width:1.8; }.duolingo-nudge:hover:not(:disabled) { background:#e5f7d2; box-shadow:0 3px 9px rgba(88,204,2,.18); transform:translateY(-1px); }.duolingo-nudge:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }.duolingo-nudge:disabled { cursor:default; opacity:.7; }.duolingo-callout { position:absolute; top:154px; right:20px; max-width:185px; margin:0; color:#438c00; font:10px/1.35 'JetBrains Mono',monospace; text-align:right; }.duolingo-callout-arrow { display:inline-block; margin-left:4px; font-size:inherit; line-height:inherit; }.duolingo-nudge-note { position:absolute; top:154px; right:1px; left:1px; min-height:13px; margin:0; color:#a1a1aa; font:10px/1.3 'JetBrains Mono',monospace; }.signal--local { padding:19px 20px; }.local-clock-row { display:flex; align-items:center; gap:10px; }.analog-clock { width:44px; height:44px; overflow:visible; color:var(--accent); shape-rendering:crispEdges; }.analog-clock circle:first-child { fill:#f3f4ff; stroke:currentColor; stroke-width:2; }.analog-clock path { fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:square; }.analog-hour { stroke-width:3 !important; }.analog-minute { stroke:#52525b !important; }.analog-pin { fill:currentColor; }.local-clock-row .clock { display:flex; align-items:center; min-height:44px; line-height:1; }
 .signal--github { grid-column:1 / -1; }
 .signal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
 .signal-title { font-size:11px; }.signal-note { margin-top:7px; color:#a1a1aa; font-size:10.5px; }
@@ -67,113 +78,79 @@ h1.is-split .name::after { animation-delay:.95s; }
 .stat { font-size:23px; font-weight:600; letter-spacing:-.03em; line-height:1; }.clock { font:500 22px 'JetBrains Mono',monospace; }
 .streak { display:flex; gap:4px; margin-top:13px; }.streak span { flex:1; height:4px; border-radius:2px; background:#4b57d1; }.streak span:nth-last-child(2){background:#c2c7ee}.streak span:last-child{background:#f1f1f0}.duolingo-widget.is-complete .streak span { background:#58cc02; }.duolingo-widget.is-complete .streak span:nth-last-child(2){background:#a7e56e}.duolingo-widget.is-complete .streak span:last-child{background:#e7f8d8}
 #gh-graph { display:grid; grid-template-rows:repeat(7,1fr); grid-auto-flow:column; grid-auto-columns:1fr; gap:2px; margin-top:12px; aspect-ratio:26/7; }.contribution { border-radius:1.5px; }
-.divider { height:1px; background:var(--line); }.work { padding:88px 0 74px; }
+.divider { height:1px; background:var(--line); }/* one full screen tall, so the section below never peeks in under the index */
+.work { min-height:100vh; min-height:100svh; padding:max(72px,var(--work-pad,0px)) 0 max(120px,var(--work-pad,0px)); }
 
-/* ── Work: the exhibition ─────────────────────────────────────────────────
-   All eight projects are on the wall at once. One shared timing curve moves
-   the dot, the title weight, the plate crop and the wall label together, so
-   a change reads as one object settling rather than six animations. Only
-   transform, opacity, clip-path and colour ever animate. */
 .work-heading { display:flex; align-items:baseline; justify-content:space-between; gap:clamp(24px,4vw,56px); margin:0 0 30px; }
 .work-title { margin:0; font-size:clamp(19px,1.75vw,23px); font-weight:600; letter-spacing:-.022em; }
 .work-intro { max-width:280px; margin:0; color:var(--muted); font:11px/1.6 'JetBrains Mono',monospace; text-align:right; }
 
-/* 64/36 with --row:42 lands the plate's bottom edge within a pixel or two of
-   the index's, now that the plate's height follows its width. */
-.exhibit { --e:cubic-bezier(.22,1,.36,1); --d:700ms; --row:42px; --gap:clamp(32px,5.4vw,60px); display:grid; grid-template-columns:minmax(0,64fr) minmax(0,36fr); column-gap:var(--gap); align-items:start; }
-
-/* One plate, one shape, every project. The aspect matches the artwork exactly,
-   so nothing is ever cropped and the box has no magic height to keep in sync
-   with the index. */
-.exhibit-plate { position:relative; overflow:hidden; aspect-ratio:1280/900; background:var(--soft); }
-
-/* A filmstrip: all eight frames sit in one row and the plate clips whatever is
-   off to the side. --x is set from each frame's index against the active one,
-   so travel direction falls out of list order — going down the index carries
-   the strip left, going up carries it right, with no state to keep. The frame
-   arrives a touch oversized and settles to 1: it lands, it doesn't stop dead. */
-/* scale() is listed first on purpose: it scales the coordinate system the
-   translate then works in, so a parked frame travels 100% of its *scaled*
-   width and clears the plate. The other order leaves the 5% overhang of a
-   centre-scaled frame hanging back over the edge. */
-.plate-image { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transform:scale(var(--s,1.05)) translate3d(var(--x,100%),0,0); transform-origin:center; transition:transform var(--d) var(--e); }
-.plate-image.is-active { --x:0%; --s:1; }
-/* Each plate carries its own ground — some of them white — so the frame, not a
-   wash, is what separates art from page. It sits inside the clip, so the edge
-   travels with the crop instead of outlining a box that isn't there. */
-.exhibit-plate::after { content:""; position:absolute; inset:0; box-shadow:inset 0 0 0 1px rgba(24,24,27,.11); pointer-events:none; }
-
-/* One architectural rule; the dot is the only thing on it that ever moves. */
-.exhibit-list { position:relative; min-width:0; padding-left:26px; }
-.exhibit-rule { position:absolute; top:6px; bottom:6px; left:0; width:1px; background:var(--line); }
-.exhibit-dot { position:absolute; top:0; left:0; width:7px; height:7px; margin-left:-3px; border-radius:50%; background:var(--ink); transform:translate3d(0,calc(var(--i,0) * var(--row) + var(--row) / 2 - 6px - 50%),0); transition:transform var(--d) var(--e),opacity 160ms ease; }
-
-.exhibit-items { display:flex; max-height:calc(var(--row) * 5); padding-right:10px; overflow-y:auto; flex-direction:column; scroll-snap-type:y proximity; scrollbar-color:#d4d4d8 transparent; scrollbar-width:thin; }
-.exhibit-items::-webkit-scrollbar { width:4px; }
-.exhibit-items::-webkit-scrollbar-track { background:transparent; }
-.exhibit-items::-webkit-scrollbar-thumb { border-radius:2px; background:#d4d4d8; }
-.exhibit-item { display:grid; flex:0 0 var(--row); grid-template-columns:32px minmax(0,1fr); align-items:center; height:var(--row); padding:0; border:0; background:none; color:inherit; cursor:pointer; scroll-snap-align:start; text-align:left; font:inherit; }
-.exhibit-item:focus-visible { outline:none; }
-.exhibit-item:focus-visible .item-title { outline:2px solid var(--accent); outline-offset:4px; }
-.item-number { font:10.5px 'JetBrains Mono',monospace; color:#a1a1aa; letter-spacing:.06em; transition:color var(--td,var(--d)) var(--e); }
-
-/* Two coincident renderings of the same word: a light one in the flow and a
-   heavy one painted over it. Crossfading them changes weight and tracking
-   with nothing but paint — no reflow, no wobbling neighbours. */
-.item-title { position:relative; justify-self:start; font-size:20px; font-weight:400; letter-spacing:-.012em; line-height:1.15; color:var(--muted); white-space:nowrap; transform:scale(1); transform-origin:left center; transition:transform var(--td,var(--d)) var(--e),color var(--td,var(--d)) var(--e); }
-.item-title::after { content:attr(data-title); position:absolute; top:0; left:0; font-weight:600; letter-spacing:-.034em; color:var(--ink); opacity:0; transition:opacity var(--td,var(--d)) var(--e); }
-
-.exhibit-item:hover .item-title { --td:300ms; color:var(--ink-soft); transform:scale(1.05); }
-.exhibit-item:hover .item-title::after { --td:300ms; opacity:.28; }
-.exhibit-item:hover .item-number { --td:300ms; color:var(--muted); }
-/* after the hover rules on purpose: an active item settles at the shared 700ms */
-.exhibit-item.is-active .item-title { --td:var(--d); color:transparent; transform:scale(1.42); }
-.exhibit-item.is-active .item-title::after { --td:var(--d); opacity:1; }
-.exhibit-item.is-active .item-number { --td:var(--d); color:var(--muted); }
-
-/* Eight wall labels stacked in one fixed box; the section can never grow. */
-/* The wall label hangs under the whole composition, not under the index. The
-   plate and the index already end on the same line, so the rule above it runs
-   the full width and the label reads as one caption for both — which is also
-   what stops the column beside the plate ending in a hole. */
-.exhibit-detail { position:relative; grid-column:1 / -1; min-height:128px; margin-top:34px; padding-top:24px; border-top:1px solid var(--line); }
-/* the inner split mirrors the grid above, so the actions land under the index */
-.detail { position:absolute; top:24px; right:0; left:0; display:grid; grid-template-columns:minmax(0,64fr) minmax(0,36fr); column-gap:var(--gap); visibility:hidden; }
-/* No cross-dissolve. A panel is either up or it isn't; the type's own travel is
-   the transition. `is-leaving` keeps the outgoing one painted just long enough
-   to roll itself out of frame. */
-.detail.is-active,.detail.is-leaving { visibility:visible; }
-
-/* Every animated run of type rides in its own mask. The padding/margin pair is
-   what keeps descenders — g, p, y — from being shaved off by the same overflow
-   that hides the travel. */
-.line-mask { display:inline-block; overflow:hidden; vertical-align:top; padding-bottom:.18em; margin-bottom:-.18em; }
-.line-mask > span { display:inline-block; }
-.detail-label { margin:0 0 11px; color:#a1a1aa; font:10px 'JetBrains Mono',monospace; letter-spacing:.12em; text-transform:uppercase; }
-.detail-summary { max-width:52ch; margin:0 0 12px; color:#52525b; font-size:13px; line-height:1.6; }
-.detail-stack { margin:0; color:#a1a1aa; font:10.5px 'JetBrains Mono',monospace; }
-/* start-aligned on both axes: as a grid item it would otherwise stretch to the
-   copy's height and drag each link's underline down with it */
-.detail-actions { display:flex; align-items:flex-start; align-self:start; gap:24px; margin:0; }
-.detail-action { display:inline-flex; align-items:center; gap:7px; position:relative; padding-bottom:6px; color:var(--ink); font:11px 'JetBrains Mono',monospace; letter-spacing:.05em; }
-/* the label is its own element so the scramble can rewrite it without
-   touching the icon beside it */
-.action-label { display:inline-block; }
-.action-icon { width:12px; height:12px; flex:none; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; transition:transform .42s cubic-bezier(.22,1,.36,1); }
-.action-icon--solid { fill:currentColor; stroke:none; }
-.detail-action:hover .action-icon:not(.action-icon--solid) { transform:translate3d(1.5px,-1.5px,0); }
-.detail-action::before,.detail-action::after { content:""; position:absolute; right:0; bottom:0; left:0; height:1px; }
-.detail-action::after { background:var(--line); }
-.detail-action::before { z-index:1; background:var(--accent); transform:scaleX(0); transform-origin:left; transition:transform .42s cubic-bezier(.22,1,.36,1); }
-.detail-action:hover { color:var(--accent); }
-.detail-action:hover::before { transform:scaleX(1); }
-.contact { padding:88px 0 120px; }.contact-links { display:flex; flex-wrap:wrap; gap:24px; }.contact-links a:not(:first-child) { color:var(--muted); }
+/* ── Work: the index ──────────────────────────────────────────────────────
+   Five rows, all of them legible at once — number, name, year, stack, source.
+   Nothing is behind a click and nothing animates on its own; the row under the
+   reader is the only thing that ever changes. */
+.work-table { --e:cubic-bezier(.22,1,.36,1); border-top:1px solid var(--ink); }
+.work-cols,.work-row { display:grid; grid-template-columns:34px minmax(0,1.6fr) 52px minmax(0,1.5fr) 22px 20px; align-items:baseline; column-gap:16px; row-gap:0; }
+.work-cols { padding:9px 0; border-bottom:1px solid var(--line); color:#a1a1aa; font:9.5px 'JetBrains Mono',monospace; letter-spacing:.14em; text-transform:uppercase; }
+.work-rows { margin:0; padding:0; list-style:none; }
+.work-row { position:relative; padding:15px 0; border-bottom:1px solid var(--line); transition:background-color .25s ease,padding .25s ease; }
+/* focus-within, not just hover: tabbing through the rows has to surface the
+   same summary the pointer does, or half the section is unreachable. */
+.work-row:hover,.work-row:focus-within { padding-right:8px; padding-left:8px; background:#fafafa; }
+.work-num,.work-year,.work-stack { color:#a1a1aa; font:10.5px 'JetBrains Mono',monospace; }
+.work-name { font-size:16px; font-weight:500; letter-spacing:-.015em; transition:color .25s ease; }
+/* Two destinations per row, so the row cannot be one anchor: the name link
+   stretches an invisible overlay across the whole row and the repo link is
+   lifted above it — a full-width target for the project, a small exact one for
+   the source. */
+.work-name::after { content:""; position:absolute; inset:0; }
+.work-row:hover .work-name { color:var(--accent); }
+.work-name:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+/* 13px of glyph, 25px of target: the padding grows the hit area and the
+   matching negative margin keeps the icon where the grid put it. */
+.work-repo { position:relative; z-index:1; justify-self:center; margin:-6px; padding:6px; color:#c4c4cb; line-height:0; transition:color .25s ease,transform .3s var(--e); }
+.work-repo svg { display:block; width:13px; height:13px; fill:currentColor; }
+.work-repo:hover { color:var(--ink); transform:translateY(-1px); }
+.work-repo:focus-visible { outline:2px solid var(--accent); outline-offset:1px; border-radius:3px; }
+/* No public repo, but the column still has to be filled: an empty cell would
+   slide the mark out of its track. A dash is the honest placeholder, and it
+   deliberately avoids .work-repo so the cursor does not caption it 'source'. */
+.work-src-none { justify-self:center; color:#d4d4d8; font:11px 'JetBrains Mono',monospace; }
+.work-mark { justify-self:end; color:#c4c4cb; font:11px 'JetBrains Mono',monospace; transition:color .3s var(--e),transform .3s var(--e); }
+.work-row:hover .work-mark { color:var(--accent); transform:translateX(3px); }
+/* The summary is the one thing a table has no column for, so it rides under the
+   row rather than widening it, and only for the row being read. */
+.work-say { grid-column:2 / -1; max-width:56ch; max-height:0; margin:0; overflow:hidden; color:#52525b; font-size:12.5px; line-height:1.6; opacity:0; transform:translate3d(0,-3px,0); transition:opacity .3s ease,max-height .35s var(--e),margin .35s var(--e),transform .3s var(--e); }
+.work-row:hover .work-say,.work-row:focus-within .work-say { max-height:60px; margin-top:25px; opacity:1; transform:none; }
+/* Only the first three rows carry one. It sits under the summary on the same
+   reveal, so a row still opens as one movement rather than two. */
+.work-award { grid-column:2 / -1; display:flex; max-height:0; margin:0; align-items:baseline; gap:8px; overflow:hidden; opacity:0; transform:translate3d(0,-3px,0); transition:opacity .3s ease,max-height .35s var(--e),margin .35s var(--e),transform .3s var(--e); }
+.work-row:hover .work-award,.work-row:focus-within .work-award { max-height:34px; margin-top:9px; opacity:1; transform:none; }
+.work-row:hover .work-award + .work-award,.work-row:focus-within .work-award + .work-award { margin-top:3px; }
+.work-award-mark { flex:0 0 auto; font-size:12px; line-height:1.5; }
+.work-award-text { color:var(--ink-soft); font:11px/1.5 'JetBrains Mono',monospace; }
+/* the way out to everything that did not make the shelf */
+.work-more { display:flex; justify-content:center; margin-top:28px; }
+.work-more-link { display:inline-flex; align-items:center; gap:6px; padding:6px 13px; border:1px solid var(--line); border-radius:999px; background:#fff; color:var(--muted); font:10.5px 'JetBrains Mono',monospace; transition:border-color .25s ease,color .25s ease,box-shadow .25s ease,transform .3s cubic-bezier(.22,1,.36,1); }
+.work-more-link svg { width:11px; height:11px; fill:currentColor; }
+.work-more-arrow { transition:transform .3s cubic-bezier(.22,1,.36,1); }
+.work-more-link:hover { border-color:#c2c7ee; color:var(--accent); transform:translateY(-1px); }
+.work-more-link:hover .work-more-arrow { transform:translateX(2px); }
+.work-more-link:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+/* No pointer, no hover: on touch the summaries are simply always out, because a
+   description nobody can reach is worse than a longer section. */
+@media (hover:none) {
+  .work-say { max-height:none; margin-top:25px; opacity:1; transform:none; }
+  .work-award { max-height:none; margin-top:9px; opacity:1; transform:none; }
+  .work-award + .work-award { margin-top:3px; }
+  .work-row:hover { padding-right:0; padding-left:0; background:none; }
+}
+.contact { padding:88px 0 120px; }.contact-links { display:flex; width:fit-content; max-width:100%; flex-wrap:wrap; gap:24px; }.contact-links a:not(:first-child) { color:var(--muted); }
 
 /* ── Arrows ───────────────────────────────────────────────────────────────
    Plain glyphs, not icons: they inherit the mono face and colour, so they
    stay in step with the type instead of needing their own sizing. */
 .scroll-cue,.to-top { display:inline-flex; align-items:center; gap:9px; color:var(--muted); font:11px 'JetBrains Mono',monospace; letter-spacing:.08em; transition:color .3s cubic-bezier(.22,1,.36,1); }
-.scroll-cue { margin-top:38px; }
 .to-top { margin-top:34px; }
 .scroll-cue:hover,.to-top:hover { color:var(--ink); }
 .cue-arrow { display:inline-block; animation:cue-bob 2.6s cubic-bezier(.45,0,.55,1) infinite; }
@@ -185,64 +162,100 @@ h1.is-split .name::after { animation-delay:.95s; }
 .link-arrow { display:inline-block; margin-left:7px; color:#c4c4cb; transition:transform .3s cubic-bezier(.22,1,.36,1),color .3s cubic-bezier(.22,1,.36,1); }
 .contact-links a:hover .link-arrow { transform:translateX(4px); color:var(--accent); }
 
-/* ── Magnetised scroll ────────────────────────────────────────────────────
-   A decisive native snap: the wheel stays fully browser-controlled, but every
-   completed gesture commits to a section instead of pausing in the space
-   between two targets. `section` already carries the scroll-margin-top the
-   rail's anchors use, so a snap and a nav click land in the same place. */
-@media (min-width:641px) and (prefers-reduced-motion:no-preference) {
-  html { scroll-snap-type:y mandatory; }
-  /* The last two sections start below the furthest the page can scroll — the
-     document simply isn't tall enough to put them at the top. A snap target
-     that can't be reached makes the browser snap as close as it can, which
-     slingshots the reader to the very bottom and skips Awards entirely. They
-     stay unsnapped so the end of the page remains reachable. */
-  main > section:not(#awards):not(#contact) { scroll-snap-align:start; scroll-snap-stop:always; }
-}
-.awards { padding:68px 0; }.awards > .section-label { margin:0 0 7px; text-align:center; }
-.awards-heading { max-width:470px; margin:0 auto 18px; text-align:center; }.awards-heading .section-label { margin:0 0 7px; }.awards-intro { max-width:none; margin:0; color:var(--muted); font:10.5px/1.5 'JetBrains Mono',monospace; text-align:center; }.award-list { max-width:470px; margin:0 auto; padding:0; list-style:none; border-top:1px solid var(--line); }.award { display:grid; grid-template-columns:46px minmax(0,1fr) 22px; align-items:baseline; gap:14px; padding:14px 0; border-bottom:1px solid var(--line); transition:border-color .25s ease,transform .25s ease; }.award-year,.award-mark { color:#a1a1aa; font:10px 'JetBrains Mono',monospace; }.award-mark { text-align:right; transition:color .25s ease,transform .25s ease; }.award-copy h2 { margin:0; font-size:14px; font-weight:500; letter-spacing:-.015em; }.award-copy p { margin:4px 0 0; color:var(--muted); font:10px/1.4 'JetBrains Mono',monospace; }.award:hover { border-bottom-color:#c2c7ee; transform:translateX(3px); }.award:hover .award-mark { color:var(--accent); transform:translateX(2px); }
+/* Keep document scrolling fully native. Mandatory section snapping made the
+   browser return to Photography because Awards and Contact sit closer to the
+   document end than a start-aligned snap position can reach. */
+.publications { padding:68px 0; }.publications > .section-label { margin:0 0 7px; text-align:center; }
+.publications-heading { max-width:470px; margin:0 auto 18px; text-align:center; }.publications-heading .section-label { margin:0 0 7px; }.publications-intro { max-width:none; margin:0; color:var(--muted); font:10.5px/1.5 'JetBrains Mono',monospace; text-align:center; }.publication-list { max-width:470px; margin:0 auto; padding:0; list-style:none; border-top:1px solid var(--line); }.publication { display:grid; grid-template-columns:46px minmax(0,1fr) 22px; align-items:baseline; gap:14px; padding:14px 0; border-bottom:1px solid var(--line); transition:border-color .25s ease,transform .25s ease; }.publication-year,.publication-mark { color:#a1a1aa; font:10px 'JetBrains Mono',monospace; }.publication-mark { text-align:right; transition:color .25s ease,transform .25s ease; }.publication-copy h2 { margin:0; font-size:14px; font-weight:500; letter-spacing:-.015em; }.publication-copy p { margin:4px 0 0; color:var(--muted); font:10px/1.4 'JetBrains Mono',monospace; }.publication:hover { border-bottom-color:#c2c7ee; transform:translateX(3px); }.publication:hover .publication-mark { color:var(--accent); transform:translateX(2px); }
 .photography { padding:88px 0 82px; }.photography > .section-label { margin:0 0 10px; }
-.photography-heading { display:flex; align-items:baseline; justify-content:flex-end; gap:24px; margin-bottom:12px; }.photography-heading .section-label { margin:0; }.photography-intro { max-width:290px; margin:0; color:var(--muted); font:11px/1.5 'JetBrains Mono',monospace; text-align:right; }.photo-grid { columns:3 160px; column-gap:6px; }.photo-grid:not(.is-expanded) .photo:nth-child(n+6) { display:none; }.photo { position:relative; display:inline-block; width:100%; margin:0 0 6px; overflow:hidden; vertical-align:top; background:var(--soft); break-inside:avoid; }.photo img { display:block; width:100%; height:auto; transform:translate3d(0,var(--par,0%),0) scale(var(--zoom,1)); transition:--zoom .5s cubic-bezier(.22,1,.36,1); }.photo::after { content:""; position:absolute; inset:0; background:linear-gradient(180deg,transparent 55%,rgba(0,0,0,.52)); opacity:0; transition:opacity .25s ease; pointer-events:none; }.photo figcaption { position:absolute; right:12px; bottom:10px; left:12px; z-index:1; display:flex; justify-content:space-between; gap:12px; color:#fff; font:10px 'JetBrains Mono',monospace; opacity:0; transform:translateY(4px); transition:opacity .25s ease,transform .25s ease; }.photo:hover img { --zoom:1.035; }.photo:hover::after,.photo:hover figcaption { opacity:1; }.photo:hover figcaption { transform:none; }.gallery-toggle { display:block; margin:14px 0 0; padding:0; border:0; background:none; color:var(--muted); cursor:pointer; font:11px 'JetBrains Mono',monospace; transition:color .2s ease; }.gallery-toggle::after { content:" ↘"; color:var(--accent); }.gallery-toggle[aria-expanded="true"]::after { content:" ↑"; }.gallery-toggle:hover { color:var(--accent); }
+.photography-heading { display:flex; align-items:baseline; justify-content:flex-end; gap:24px; margin-bottom:12px; }.photography-heading .section-label { margin:0; }.photography-intro { max-width:290px; margin:0; color:var(--muted); font:11px/1.5 'JetBrains Mono',monospace; text-align:right; }.photo-grid { columns:3 160px; column-gap:6px; }.photo-grid:not(.is-expanded) .photo:nth-child(n+7) { display:none; }.photo { position:relative; display:inline-block; width:100%; margin:0 0 6px; overflow:hidden; vertical-align:top; background:var(--soft); break-inside:avoid; }.photo img { display:block; width:100%; height:auto; transform:translate3d(0,var(--par,0%),0) scale(var(--zoom,1)); transition:--zoom .5s cubic-bezier(.22,1,.36,1); }.photo::after { content:""; position:absolute; inset:0; background:linear-gradient(180deg,transparent 55%,rgba(0,0,0,.52)); opacity:0; transition:opacity .25s ease; pointer-events:none; }.photo figcaption { position:absolute; right:12px; bottom:10px; left:12px; z-index:1; display:flex; justify-content:space-between; gap:12px; color:#fff; font:10px 'JetBrains Mono',monospace; opacity:0; transform:translateY(4px); transition:opacity .25s ease,transform .25s ease; }.photo-open { position:absolute; inset:0; z-index:2; padding:0; border:0; background:none; cursor:pointer; }.photo-open:focus-visible { outline:2px solid var(--accent); outline-offset:-3px; }.photo:hover img { --zoom:1.035; }.photo:hover::after,.photo:hover figcaption { opacity:1; }.photo:hover figcaption { transform:none; }.gallery-toggle { display:block; margin:14px 0 0; padding:0; border:0; background:none; color:var(--muted); cursor:pointer; font:11px 'JetBrains Mono',monospace; transition:color .2s ease; }.gallery-toggle::after { content:" ↘"; color:var(--accent); }.gallery-toggle[aria-expanded="true"]::after { content:" ↑"; }.gallery-toggle:hover { color:var(--accent); }
 @property --zoom { syntax:'<number>'; inherits:false; initial-value:1; }
 .has-parallax .photo img { --zoom:1.085; }
 .has-parallax .photo:hover img { --zoom:1.12; }
 [data-reveal] { opacity:0; transform:translateY(18px); transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1); }[data-reveal].is-revealed { opacity:1; transform:none; }
 @media (min-width:1180px) {
-  .work,.photography,.awards { position:relative; }
-  .work > .section-label,.photography > .section-label,.awards > .section-label { position:sticky; top:34px; z-index:3; float:left; width:104px; margin:0 0 0 -136px; text-align:right; }
+  .work,.photography,.publications { position:relative; }
+  .work > .section-label,.photography > .section-label,.publications > .section-label { position:sticky; top:34px; z-index:3; float:left; width:104px; margin:0 0 0 -136px; text-align:right; }
 }
-@media (max-width:640px) { .work-heading { display:block; }.work-intro { max-width:none; margin-top:8px; text-align:left; }.work-intro br { display:none; }.page { padding-left:0; }.rail { position:sticky; top:0; width:100%; height:58px; padding:0 18px; flex-direction:row; }.rail-links { height:auto; flex-direction:row; gap:16px; }.rail-links a { writing-mode:initial; transform:none; }.rail-socials { display:none; }main { padding:0 24px; }.hero { min-height:0; padding-top:72px; }.signal-grid { grid-template-columns:1fr; }.signal--duolingo { min-height:126px; }.awards { padding:56px 0; }.awards-heading { display:block; margin-bottom:16px; }.awards-intro { margin-top:7px; text-align:center; }.award { grid-template-columns:40px minmax(0,1fr) 18px; gap:8px; padding:13px 0; }.award-copy h2 { font-size:13px; }.award-copy p { font-size:9.5px; }.photography { padding:70px 0 64px; }.photography-heading { display:block; }.photography-intro { margin-top:7px; text-align:left; }.photo-grid { columns:2; column-gap:5px; }.photo { margin-bottom:5px; } }
+@media (max-width:640px) { .work-heading { display:block; }.work-intro { max-width:none; margin-top:8px; text-align:left; }.work-intro br { display:none; }.page { padding-left:0; }.rail { position:sticky; top:0; width:100%; height:58px; padding:0 18px; flex-direction:row; background:#fff; }.rail-links { height:auto; }.rail-nav { flex-direction:row; gap:16px; }.rail-links a { writing-mode:initial; transform:none; }.rail-socials { display:none; }main { padding:0 24px; }.hero { min-height:0; padding-top:72px; }.signal-grid { grid-template-columns:1fr; }.signal--duolingo { min-height:126px; }.publications { padding:56px 0; }.publications-heading { display:block; margin-bottom:16px; }.publications-intro { margin-top:7px; text-align:center; }.publication { grid-template-columns:40px minmax(0,1fr) 18px; gap:8px; padding:13px 0; }.publication-copy h2 { font-size:13px; }.publication-copy p { font-size:9.5px; }.photography { padding:70px 0 64px; }.photography-heading { display:block; }.photography-intro { margin-top:7px; text-align:left; }.photo-grid { columns:2; column-gap:5px; }.photo { margin-bottom:5px; } }
 
-/* Two columns hold as far down as the rest of the layout does — the plate
-   narrows rather than dropping below the index. */
+/* The stack is the first column to go: it is the one field a reader can live
+   without, and dropping it keeps name, year and both links on one line. */
 @media (max-width:900px) {
-  /* --row stays at the base 42px: the plate's height now follows its width, so
-     a taller row here only walks the index further past the plate's bottom. */
-  .exhibit { --gap:clamp(24px,4vw,40px); }
-  .exhibit-list { padding-left:22px; }
-  .item-title { font-size:18px; }
-  .exhibit-item.is-active .item-title { transform:scale(1.34); }
-  .exhibit-detail { min-height:130px; }
+  .work-cols,.work-row { grid-template-columns:30px minmax(0,1.5fr) 48px minmax(0,1.1fr) 22px 18px; column-gap:12px; row-gap:0; }
+  .work-name { font-size:15px; }
 }
-/* Below that the composition unstacks in reading order: plate, index, wall
-   label. The idea is unchanged; it never becomes a set of cards. */
 @media (max-width:640px) {
-  .work { padding:60px 0 54px; }
-  .exhibit { --row:44px; grid-template-columns:100%; row-gap:20px; }
-  /* single column: the label's own split stacks too, actions last */
-  .exhibit-detail { min-height:186px; margin-top:26px; }
-  .detail { grid-template-columns:100%; row-gap:20px; }
-  .detail-summary { max-width:none; }
+  .work { min-height:calc(100svh - 58px); padding:max(64px,var(--work-pad,0px)) 0; }
+  .work-cols,.work-row { grid-template-columns:28px minmax(0,1fr) 46px 22px 18px; column-gap:10px; row-gap:0; }
+  .work-cols span:nth-child(4),.work-stack { display:none; }
+  .work-say { max-width:none; }
+  /* The trophy stays on the first line and the text wraps under itself;
+     wrapping the flex row instead stranded the trophy on a line alone. */
+  .work-award { gap:6px; }
+  .work-award-text { flex:1 1 auto; }
+  .work-row:hover .work-award,.work-row:focus-within .work-award { max-height:80px; }
 }
 
 @media (prefers-reduced-motion:reduce) {
-  .cursor-dot,.cursor-ring,.cursor-label { display:none; }
+  .liquid-cursor,.cursor-label,.cursor-click { display:none; }
+  .point-cloud { transition:none; }
   [data-reveal] { opacity:1; transform:none; transition:none; }
-  /* keep every state change, just stop moving: a short crossfade, no travel */
-  .exhibit { --d:160ms; }
-  .plate-image { transform:none; opacity:0; transition:opacity 160ms linear; }
-  .plate-image.is-active { transform:none; opacity:1; }
-  .item-title,.exhibit-item:hover .item-title,.exhibit-item.is-active .item-title { transform:none; }
-  .exhibit-item.is-active .item-title { font-size:26px; }
+  /* keep every state change, just stop moving: the summary appears, the row
+     does not slide out to meet it */
+  .work-row,.work-say,.work-award,.work-repo,.work-mark { transition:none; }
+  .work-say,.work-award { transform:none; }
+  .work-row:hover .work-mark { transform:none; }
+  .work-more-link,.work-more-arrow { transition:none; }
+  .work-more-link:hover,.work-more-link:hover .work-more-arrow { transform:none; }
   *,*::before,*::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; }
+}
+
+@media (pointer:coarse) {
+  .liquid-cursor,.cursor-label,.cursor-click { display:none; }
+}
+
+/* Close-up viewer: a dark room over the page so the photographs sit on their own.
+   It stays under the liquid cursor's layer (999) so the custom cursor still draws. */
+.viewer { position:fixed; z-index:900; inset:0; display:grid; place-items:center; }
+.viewer[hidden] { display:none; }
+.viewer-scrim { position:absolute; inset:0; background:rgba(13,13,15,.975); opacity:0; transition:opacity .32s cubic-bezier(.22,1,.36,1); }
+.viewer.is-open .viewer-scrim { opacity:1; }
+.viewer-panel { position:relative; display:grid; width:100%; height:100%; padding:28px 72px 24px; place-items:center; }
+.viewer-figure { display:flex; max-width:100%; max-height:100%; flex-direction:column; gap:14px; margin:0; opacity:0; transform:scale(.985) translate3d(0,6px,0); transition:opacity .3s ease,transform .38s cubic-bezier(.22,1,.36,1); }
+.viewer.is-open .viewer-figure { opacity:1; transform:none; }
+.viewer-image { display:block; max-width:100%; max-height:calc(100vh - 150px); margin:0 auto; object-fit:contain; }
+.viewer-caption { display:flex; max-width:100%; flex-direction:column; gap:5px; }
+.viewer-head { display:flex; align-items:baseline; justify-content:space-between; gap:20px; }
+.viewer-title { margin:0; color:#f2f2f4; font-size:14px; font-weight:500; letter-spacing:-.01em; }
+.viewer-count { margin:0; color:#8b8b95; font:10px 'JetBrains Mono',monospace; letter-spacing:.08em; }
+.viewer-exif { display:flex; flex-wrap:wrap; gap:4px 12px; margin:0; color:#8b8b95; font:10px/1.5 'JetBrains Mono',monospace; }
+.viewer-exif div { display:flex; gap:6px; }
+.viewer-exif div + div::before { content:"·"; margin-right:6px; color:#54545c; }
+.viewer-exif dt { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.viewer-exif dd { margin:0; }
+.viewer-close,.viewer-step { position:absolute; display:grid; padding:0; border:0; background:none; color:#8b8b95; cursor:pointer; place-items:center; transition:color .2s ease,transform .2s ease,opacity .2s ease; }
+.viewer-close svg,.viewer-step svg { width:100%; height:100%; fill:none; stroke:currentColor; stroke-linecap:round; stroke-linejoin:round; stroke-width:1.5; }
+.viewer-close { top:22px; right:24px; width:20px; height:20px; }
+.viewer-step { top:50%; width:26px; height:26px; margin-top:-13px; }
+.viewer-step--prev { left:22px; }
+.viewer-step--next { right:22px; }
+.viewer-close:hover,.viewer-step:hover { color:#fff; }
+.viewer-step--prev:hover { transform:translateX(-2px); }
+.viewer-step--next:hover { transform:translateX(2px); }
+.viewer-close:focus-visible,.viewer-step:focus-visible { outline:2px solid #fff; outline-offset:4px; }
+.viewer-step[disabled] { cursor:default; opacity:.22; }
+.viewer-step[disabled]:hover { color:#8b8b95; transform:none; }
+body.viewer-open { overflow:hidden; }
+@media (max-width:640px) {
+  .viewer-panel { padding:16px 16px 20px; }
+  .viewer-image { max-height:calc(100vh - 190px); }
+  .viewer-step { top:auto; bottom:18px; margin-top:0; }
+  .viewer-step--prev { left:18px; }
+  .viewer-step--next { right:18px; }
+  .viewer-caption { padding:0 34px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .viewer-scrim,.viewer-figure { transition:none; }
+  .viewer-figure { transform:none; }
 }

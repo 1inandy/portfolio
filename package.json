@@ -1,5 +1,6 @@
 {
-  "name": "kai-renner-portfolio",
+  "name": "andy-lin-portfolio",
+  "description": "Personal portfolio of Andy Lin.",
   "version": "1.0.0",
   "private": true,
   "type": "module",

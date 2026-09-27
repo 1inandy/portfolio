@@ -1,34 +1,57 @@
-# Kai Renner Portfolio
+# Andy Lin — Portfolio
 
-A dependency-free personal portfolio site.
+My personal site: selected projects, photography, and a few live widgets (GitHub
+contributions, Duolingo streak, local clock). Plain HTML, CSS, and JavaScript with
+no framework and no runtime dependencies.
 
 ## Run locally
 
+Requires Node 20.6+ (for `--env-file`).
+
 ```sh
+cp .env.example .env   # required by the dev script; values are optional
 npm run dev
 ```
 
-Then open the local URL printed by the server. The site entry point is `index.html`.
-The local server also runs the Duolingo endpoint, so the widget works during development.
+Then open http://localhost:3000. The local server serves the site and the `/api/*`
+endpoints, so every widget works during development.
+
+## Build
+
+```sh
+npm run build
+```
+
+Copies the site into `dist/` for deployment. `dist/` is generated: edit files in
+`assets/` and `index.html`, then rebuild. Never edit `dist/` by hand.
 
 ## Project structure
 
-- `index.html` — page markup and editable portfolio content
-- `assets/css/styles.css` — responsive styling
-- `assets/js/main.js` — clock, contribution graph, hover preview, and scroll interactions
-- `api/duolingo.js` — cached Duolingo status endpoint (Vercel serverless function)
-- `Portfolio.dc.html` — original design-export source, retained for reference
+| Path | What it is |
+| --- | --- |
+| `index.html` | Page markup and all copy |
+| `assets/css/styles.css` | Styling |
+| `assets/js/main.js` | Clock, widgets, reveal and hover interactions, photo viewer, cursor |
+| `assets/js/magnetic-scroll.js` | Section-to-section wheel snapping |
+| `assets/js/point-cloud.js` | Background dot field |
+| `assets/js/liquid-cursor.js` | Custom cursor trail |
+| `assets/photos/` | Gallery thumbnails; `full/` holds the viewer images |
+| `api/` | Serverless endpoints: GitHub contributions, Duolingo status, Duolingo nudge |
+| `worker/index.js` | The same endpoints for the edge deployment in `dist/server/` |
+| `server.js` | Local dev server |
+| `scripts/build.mjs` | Build script |
 
-Before publishing, replace the placeholder social links, email address, and project URLs in `index.html`.
+## Environment
 
-## Duolingo widget
+| Variable | Purpose |
+| --- | --- |
+| `DISCORD_DUOLINGO_WEBHOOK_URL` | Discord incoming webhook for the "Remind me to practice" button. Without it, the button says reminders aren't configured. |
+| `DUOLINGO_TIME_ZONE` | Day boundary for the streak. Defaults to `America/New_York`. |
 
-The Duolingo card reads Andy's public profile through `/api/duolingo`, which is a Vercel serverless function. Deploy this project on Vercel (rather than a static-only host) for the live status to work. It caches the public lookup for five minutes and never uses a Duolingo password or token. Visitors who leave the page open recheck the status every five minutes.
+Secrets stay on the server. The Duolingo lookup uses only the public profile and
+is cached for five minutes, and each visitor can send one reminder every 15 minutes.
 
-`DUOLINGO_TIME_ZONE` defaults to `America/New_York`. Set that environment variable in Vercel if the Duolingo account uses a different local day boundary.
+## Accessibility
 
-## Visitor Duolingo nudges
-
-Visitors can select the bell labeled **Remind me to practice**. The site sends a Discord incoming-webhook message from the server; no visitor data or webhook secret is exposed in the browser. Create a Discord webhook in the channel where you want reminders, then set its URL as the `DISCORD_DUOLINGO_WEBHOOK_URL` environment variable locally and in Vercel.
-
-Each visitor address can send one reminder every 15 minutes. If the environment variable is not set, the button explains that reminders are not configured.
+All content is real DOM text. Motion respects `prefers-reduced-motion`, and on touch
+devices the custom cursor is off and project details are always shown.
