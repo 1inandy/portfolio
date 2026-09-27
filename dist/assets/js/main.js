@@ -83,7 +83,10 @@ function setupDuolingoNudge() {
   if (!button || !note) return;
 
   button.addEventListener('click', async () => {
+    const callout = $('#duolingo-callout');
     button.disabled = true;
+    // The callout and note share a slot; hide the callout now so they never overlap mid-request.
+    if (callout) callout.hidden = true;
     note.textContent = 'sending reminder…';
     try {
       const response = await fetch('/api/duolingo-nudge', { method: 'POST' });
@@ -92,7 +95,7 @@ function setupDuolingoNudge() {
       button.setAttribute('aria-label', 'Reminder sent');
       button.title = 'Reminder sent';
       button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>';
-      $('#duolingo-callout')?.remove();
+      callout?.remove();
       note.textContent = 'thanks for letting me know -- i guess ill go do it now 🙄.';
     } catch (error) {
       button.disabled = false;
