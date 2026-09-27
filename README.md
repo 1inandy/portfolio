@@ -25,6 +25,15 @@ npm run build
 Copies the site into `dist/` for deployment. `dist/` is generated: edit files in
 `assets/` and `index.html`, then rebuild. Never edit `dist/` by hand.
 
+## Deploy (Heroku)
+
+Heroku runs `npm run build` and then `npm start`, which runs `node server.js` with no
+`.env` file. Set the variables below as Heroku config vars instead:
+
+```sh
+heroku config:set DISCORD_DUOLINGO_WEBHOOK_URL=... -a <app>
+```
+
 ## Project structure
 
 | Path | What it is |

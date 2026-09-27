@@ -3,10 +3,13 @@
   "description": "Personal portfolio of Andy Lin.",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20.6"
+  },
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "start": "node --env-file=.env server.js",
+    "start": "node server.js",
     "dev": "node --env-file=.env server.js"
   }
 }
